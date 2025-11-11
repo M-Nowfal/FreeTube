@@ -13,7 +13,7 @@ const ThemeToggler = ({ theme, toggleTheme }: ThemeTogglerProps) => {
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 64 64" role="img" aria-labelledby="sunTitle">
           <title id="sunTitle">Sun</title>
           <circle cx="32" cy="32" r="12" fill="#fff" />
-          <g stroke="#fff" stroke-width="3" stroke-linecap="round">
+          <g stroke="#fff" strokeWidth="3" strokeLinecap="round">
             <line x1="32" y1="4" x2="32" y2="14" />
             <line x1="32" y1="50" x2="32" y2="60" />
             <line x1="4" y1="32" x2="14" y2="32" />

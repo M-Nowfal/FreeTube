@@ -7,7 +7,7 @@ const PlayButton = ({ handlePlay, theme }: { handlePlay: () => void, theme: "dar
       <span className="hidden md:block">Play</span>
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 64 64" role="img" aria-labelledby="playTitle">
         <title id="playTitle">Play</title>
-        <circle cx="32" cy="32" r="30" fill="#fff" stroke="#000" stroke-width="2" />
+        <circle cx="32" cy="32" r="30" fill="#fff" stroke="#000" strokeWidth="2" />
         <polygon points="26,20 26,44 46,32" fill="#000" />
       </svg>
     </button>

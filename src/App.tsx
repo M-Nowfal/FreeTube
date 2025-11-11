@@ -38,7 +38,7 @@ const App = () => {
       </div>
       <div className="flex items-center gap-3">
         <img src="/favicon.svg" alt="freetube" width={60} height={60} className={theme === "dark" ? "invert" : ""} />
-        <h1 className="mb-2 font-bold text-2xl lg:text-5xl">FreeTube</h1>
+        <h1 className="font-bold text-3xl lg:text-5xl">FreeTube</h1>
       </div>
       <div className={`
         border p-3 rounded-lg w-[90%] max-w-7xl
