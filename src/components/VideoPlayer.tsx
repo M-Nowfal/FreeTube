@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from "react";
+import { toEmbedUrl } from "../lib";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -9,23 +10,15 @@ interface VideoPlayerProps {
 const VideoPlayer = ({ videoUrl, theme, setVideoUrl }: VideoPlayerProps): JSX.Element => {
   const [message, setMessage] = useState<string>("No video URL provided.");
   const [finalUrl, setFinalUrl] = useState<string>("");
-  const baseUrl = "https://www.youtube.com/embed/";
 
   useEffect(() => {
     try {
-      if (videoUrl.startsWith("https://youtu.be/")) {
-        setFinalUrl(baseUrl + videoUrl.split(".be/")[1]);
-      } else if (videoUrl.startsWith("https://youtube.com/shorts")) {
-        setFinalUrl(baseUrl + videoUrl.split("/shorts/")[1]);
-      } else if (videoUrl.startsWith("<iframe")) {
-        setFinalUrl(baseUrl + videoUrl.split("/embed/")[1]?.split('"')[0]);
-      } else if (videoUrl.startsWith("https://www.youtube.com/watch?v=")) {
-        setFinalUrl(baseUrl + videoUrl.split("v=")[1]?.split("&")[0]);
-      } else {
-        if (videoUrl !== "") throw new Error();
+      const embedUrl = toEmbedUrl(videoUrl);
+      if (!embedUrl) {
         setMessage("No video URL provided.");
         setFinalUrl("");
       }
+      setFinalUrl(embedUrl);
     } catch {
       setMessage("Invalid or unsupported video URL.");
       setFinalUrl("");
@@ -35,9 +28,9 @@ const VideoPlayer = ({ videoUrl, theme, setVideoUrl }: VideoPlayerProps): JSX.El
   return (
     <div className="w-full">
       {finalUrl ? (
-        <div className="relative">
+        <div className="relative group">
           <button
-            className={`absolute right-0 -top-2 rounded-full p-1 cursor-pointer ${theme === "dark" ? "bg-white" : "bg-black"} hover:scale-110 transition-all`}
+            className={`md:hidden group-hover:block absolute -right-1.5 -top-2 rounded-full p-1 cursor-pointer ${theme === "dark" ? "bg-white" : "bg-black"} hover:scale-110 transition-all`}
             onClick={() => setVideoUrl("")}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" role="img" aria-labelledby="xTitle">
