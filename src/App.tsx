@@ -56,23 +56,23 @@ const App = () => {
 
   return (
     <div className={`
-      flex flex-col justify-center items-center min-h-svh py-5
+      flex flex-col justify-center items-center min-h-svh
       ${theme === "dark" ? "bg-black text-white" : "bg-white"}
     `}>
       <div className="absolute top-3 right-5">
         <ThemeToggler {...{ theme, toggleTheme }} />
       </div>
       <div className="flex items-center gap-3 mb-3">
-        <img src="/favicon.svg" alt="freetube" width={60} height={60} className={theme === "dark" ? "invert" : ""} />
-        <h1 className="font-bold text-3xl lg:text-5xl">FreeTube</h1>
+        <img src="/favicon.svg" alt="freetube" className={`${theme === "dark" ? "invert" : ""} w-12 h-12 md:w-15 md:h-15 lg:w-20 lg:h-20`} />
+        <h1 className="font-bold text-2xl md:text-3xl lg:text-5xl">FreeTube</h1>
       </div>
       <div className={`w-full flex flex-col xl:flex-row place-items-center justify-center xl:items-start gap-5 lg:px-3`}>
         <div className={`
-          border p-3 rounded-lg w-[90%] max-w-7xl
+          border p-3 rounded-lg w-[97%] max-w-7xl
           ${theme === "dark" ? "border-slate-800" : "border-gray-300"}
         `}>
           <div className="flex items-center gap-3 border border-inherit p-0.5 rounded-lg">
-            <InputVideoUrl {...{ inputUrl, setInputUrl, handlePlay }} />
+            <InputVideoUrl {...{ inputUrl, setInputUrl, handlePlay, theme }} />
             <PlayButton {...{ handlePlay, theme }} />
           </div>
 

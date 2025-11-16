@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { toEmbedUrl } from "../lib";
+import { X } from "./Icons";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -33,11 +34,7 @@ const VideoPlayer = ({ videoUrl, theme, setVideoUrl }: VideoPlayerProps): JSX.El
             className={`md:hidden group-hover:block absolute -right-1.5 -top-2 rounded-full p-1 cursor-pointer ${theme === "dark" ? "bg-white" : "bg-black"} hover:scale-110 transition-all`}
             onClick={() => setVideoUrl("")}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" role="img" aria-labelledby="xTitle">
-              <title id="xTitle">Close</title>
-              <line x1="4" y1="4" x2="20" y2="20" stroke={theme === "dark" ? "#000" : "#fff"} strokeWidth="4" strokeLinecap="round" />
-              <line x1="20" y1="4" x2="4" y2="20" stroke={theme === "dark" ? "#000" : "#fff"} strokeWidth="4" strokeLinecap="round" />
-            </svg>
+            <X theme={theme} />
           </button>
           <iframe
             key={videoUrl}

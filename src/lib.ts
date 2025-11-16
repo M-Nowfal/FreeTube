@@ -25,6 +25,8 @@ export const toEmbedUrl = (url: string): string => {
     finalUrl = baseUrl + url.split("/embed/")[1]?.split('"')[0];
   else if (url.startsWith("https://www.youtube.com/watch?v="))
     finalUrl = baseUrl + url.split("v=")[1]?.split("&")[0];
+  else if (url.startsWith("https://www.youtube.com/live/"))
+    finalUrl = baseUrl + url.split("/live/")[1];
   else
     if (url !== "") throw new Error();
   return finalUrl;
