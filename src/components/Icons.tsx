@@ -73,3 +73,13 @@ export const Trash = (): JSX.Element => {
     </svg>
   )
 }
+
+export const User = (): JSX.Element => {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <circle cx="12" cy="9" r="3"></circle>
+      <path d="M7 17c2-2 8-2 10 0"></path>
+    </svg>
+  );
+}

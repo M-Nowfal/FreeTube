@@ -1,16 +1,18 @@
 import { useEffect, useState, type JSX } from "react";
 import { toEmbedUrl } from "../lib";
 import { X } from "./Icons";
+import { useContext } from "react"
+import { ThemeContext } from "../context/ThemeProvider"
 
 interface VideoPlayerProps {
   videoUrl: string;
-  theme: "light" | "dark";
   setVideoUrl: (url: string) => void;
 }
 
-const VideoPlayer = ({ videoUrl, theme, setVideoUrl }: VideoPlayerProps): JSX.Element => {
+const VideoPlayer = ({ videoUrl, setVideoUrl }: VideoPlayerProps): JSX.Element => {
   const [message, setMessage] = useState<string>("No video URL provided.");
   const [finalUrl, setFinalUrl] = useState<string>("");
+  const { theme } = useContext(ThemeContext);
 
   useEffect(() => {
     try {
