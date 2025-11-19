@@ -22,7 +22,7 @@ const History = ({ history, removeHistory, clearHistory, handlePlay, loading, lo
       className={`
         border p-3 pt-0 rounded-lg w-[97%] max-w-7xl xl:max-w-xl max-h-[55vh] xl:max-h-[84.5vh] overflow-auto
         ${theme === "dark" ? "border-slate-800" : "border-gray-300"}
-        flex flex-col gap-3 hide-scrollbar relative mb-3 ${loading ? "h-[20vh]" : ""}
+        flex flex-col gap-3 hide-scrollbar relative ${loading ? "h-[20vh]" : ""}
       `}
     >
       <div className={`sticky top-0 ${theme === "light" ? "bg-white/80" : "bg-black/80"} w-full py-2 z-10`}>
