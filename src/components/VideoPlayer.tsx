@@ -43,11 +43,11 @@ const VideoPlayer = ({ videoUrl, setVideoUrl, lock, toggleLock }: VideoPlayerPro
           <iframe
             key={videoUrl}
             src={finalUrl}
-            className="w-full aspect-video rounded-lg"
+            className={`w-full aspect-video rounded-lg ${lock ? "pointer-events-none" : "pointer-events-auto"}`}
             allowFullScreen
           />
           <button
-            className="absolute bottom-5 md:bottom-25 left-5 bg-white rounded-full p-0.5 cursor-pointer z-20"
+            className="md:hidden group-hover:block absolute bottom-5 md:bottom-7 left-5 md:left-7 bg-white rounded-full p-0.5 cursor-pointer z-20"
             onClick={toggleLock}
           >
             {lock ? <Lock className="text-black" /> : <UnLock className="text-black" />}

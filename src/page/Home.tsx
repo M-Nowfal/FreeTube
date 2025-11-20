@@ -38,16 +38,6 @@ const Home = () => {
     })();
   }, [auth]);
 
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    const metaThemeColor = document.querySelector("meta[name='theme-color']")
-    const color = theme === "dark" ? "#000000" : "#ffffff"
-
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute("content", color)
-    }
-  }, [theme]);
-
   const toggleLock = () => setLock(prev => !prev);
 
   const handlePlay = (url?: string) => {
