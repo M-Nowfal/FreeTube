@@ -3,6 +3,7 @@ import { ThemeContext } from "../context/ThemeProvider";
 import axios, { AxiosError } from "axios";
 import { AuthContext } from "../context/AuthProvider";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
+import { LeftArrow } from "../components/Icons";
 
 const Login = () => {
   const { theme } = useContext(ThemeContext);
@@ -24,7 +25,7 @@ const Login = () => {
       }
     } catch (err: unknown) {
       console.error(err);
-      alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
+      alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -34,6 +35,9 @@ const Login = () => {
     <div
       className={`min-h-screen flex items-center justify-center ${theme === "dark" ? "bg-black text-white" : "bg-white text-black"}`}
     >
+      <button onClick={() => navigate("/", { replace: true })} className="absolute top-3 left-3">
+        <LeftArrow />
+      </button>
       <form onSubmit={handleSubmit} className={`w-full max-w-sm p-6 rounded-xl border ${theme === "dark" ? "border-gray-600" : "border-gray-300"}`}>
         <h1 className="text-2xl font-semibold text-center mb-6">Login</h1>
 

@@ -3,6 +3,7 @@ import { ThemeContext } from "../context/ThemeProvider";
 import axios, { AxiosError } from "axios";
 import { AuthContext } from "../context/AuthProvider";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
+import { LeftArrow } from "../components/Icons";
 
 const Create = (): JSX.Element => {
   const { theme } = useContext(ThemeContext);
@@ -10,6 +11,7 @@ const Create = (): JSX.Element => {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [syncHistory, setSyncHistory] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const navigate: NavigateFunction = useNavigate();
 
@@ -17,7 +19,8 @@ const Create = (): JSX.Element => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/create`, { username, password, confirmPassword });
+      const history = syncHistory ? JSON.parse(localStorage.getItem("history") || "[]") : [];
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/create`, { username, password, confirmPassword, history });
       if (res.status === 201) {
         localStorage.setItem("auth", JSON.stringify({ isAuth: true, username }));
         toggleAuth(true, username);
@@ -25,7 +28,7 @@ const Create = (): JSX.Element => {
       }
     } catch (err: unknown) {
       console.error(err);
-      alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
+      alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,9 @@ const Create = (): JSX.Element => {
         : "bg-white text-black"
         }`}
     >
+      <button onClick={() => navigate("/", { replace: true })} className="absolute top-3 left-3">
+        <LeftArrow />
+      </button>
       <form
         onSubmit={handleSubmit}
         className={`w-full max-w-sm border p-6 rounded-xl shadow-lg flex flex-col gap-4 ${theme === "dark"
@@ -84,6 +90,18 @@ const Create = (): JSX.Element => {
             : "bg-white border border-black/20 text-black"
             }`}
         />
+
+        <div className="ms-2 flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="synchistory"
+            id="synchistory"
+            className={`size-4 ${theme === "dark" ? "accent-white" : "accent-black"}`}
+            checked={syncHistory}
+            onChange={() => setSyncHistory(prev => !prev)}
+          />
+          <label htmlFor="synchistory" className="text-sm font-medium text-gray-600">Sync History</label>
+        </div>
 
         <button
           type="submit"

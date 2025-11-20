@@ -15,12 +15,10 @@ const Home = () => {
   const [inputUrl, setInputUrl] = useState<string>("");
   const [history, setHistory] = useState<Array<{ url: string; title: string }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [loading2, setLoading2] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
       if (auth.isAuth) {
-        setLoading(true);
         try {
           const res = await axios.get(`${import.meta.env.VITE_API_URL}/history?username=${auth.username}`);
           if (res.status === 200)
@@ -31,9 +29,7 @@ const Home = () => {
             toggleAuth(false, "");
           }
           console.error(err);
-          alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
-        } finally {
-          setLoading(false);
+          alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
         }
       } else {
         setHistory(JSON.parse(window.localStorage.getItem("history") || "[]"));
@@ -65,15 +61,15 @@ const Home = () => {
 
     if (auth.isAuth) {
       try {
-        setLoading2(true);
+        setLoading(true);
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/history`, { username: auth.username, url: embedUrl, title });
         if (res.status === 201)
           setHistory(res.data.history);
       } catch (err: unknown) {
         console.error(err);
-        alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
+        alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
       } finally {
-        setLoading2(false);
+        setLoading(false);
       }
     } else {
       const storedHistory = JSON.parse(window.localStorage.getItem("history") || "[]");
@@ -90,16 +86,16 @@ const Home = () => {
   const removeHistory = async (id: number) => {
     if (auth.isAuth) {
       try {
-        setLoading2(true);
+        setLoading(true);
         const { url, title } = history.find((_, i) => i === id) as { url: string, title: string };
         const res = await axios.delete(`${import.meta.env.VITE_API_URL}/history`, { data: { username: auth.username, url, title } });
         if (res.status === 200)
           setHistory(res.data.history);
       } catch (err: unknown) {
         console.error(err);
-        alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
+        alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
       } finally {
-        setLoading2(false);
+        setLoading(false);
       }
     } else {
       setHistory(prev => {
@@ -111,17 +107,18 @@ const Home = () => {
   }
 
   const clearHistory = async () => {
+    if (!confirm("Are you sure to clear history")) return;
     if (auth.isAuth) {
-      setLoading2(true)
+      setLoading(true)
       try {
         const res = await axios.delete(`${import.meta.env.VITE_API_URL}/clear`, { data: { username: auth.username } });
         if (res.status === 200)
           setHistory([]);
       } catch (err: unknown) {
         console.error(err);
-        alert(err instanceof AxiosError ? err.response?.data.message : "Something went wrong");
+        alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
       } finally {
-        setLoading2(false)
+        setLoading(false)
       }
     } else {
       window.localStorage.removeItem("history");
@@ -153,7 +150,7 @@ const Home = () => {
           <History {...{
             history, removeHistory,
             clearHistory, handlePlay, 
-            loading, loading2
+            loading
           }} />
         )}
       </div>

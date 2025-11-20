@@ -34,8 +34,8 @@ const Layout = () => {
                 "bg-neutral-900 text-white border border-white/10"
               ) : (
                 "bg-white text-black border border-black/10"
-              )} 
-              p-4 w-fit rounded-xl shadow-lg flex flex-col gap-2`}
+              )}
+              p-4 min-w-48 max-w-xs rounded-xl shadow-lg flex flex-col gap-2`}
             >
               {!auth.isAuth ? (
                 <Link
@@ -52,8 +52,11 @@ const Layout = () => {
                 </Link>
               ) : (
                 <div className="my-3 flex flex-col gap-2">
-                  <span className="text-gray-400 text-sm">Username :</span>
-                  <span>{auth.username}</span>
+                  <div className={`flex items-center gap-2 ${theme === "dark" ? "text-gray-400" : "text-gray-700"} text-sm border-b pb-2`}>
+                    <User />
+                    <span>Username</span>
+                  </div>
+                  <span className="truncate">{auth.username}</span>
                 </div>
               )}
 
