@@ -1,15 +1,17 @@
 import { useEffect, useState, type JSX } from "react";
 import { toEmbedUrl } from "../lib";
-import { X } from "./Icons";
+import { Lock, UnLock, X } from "./Icons";
 import { useContext } from "react"
 import { ThemeContext } from "../context/ThemeProvider"
 
 interface VideoPlayerProps {
   videoUrl: string;
   setVideoUrl: (url: string) => void;
+  lock: boolean;
+  toggleLock: () => void;
 }
 
-const VideoPlayer = ({ videoUrl, setVideoUrl }: VideoPlayerProps): JSX.Element => {
+const VideoPlayer = ({ videoUrl, setVideoUrl, lock, toggleLock }: VideoPlayerProps): JSX.Element => {
   const [message, setMessage] = useState<string>("No video URL provided.");
   const [finalUrl, setFinalUrl] = useState<string>("");
   const { theme } = useContext(ThemeContext);
@@ -44,6 +46,12 @@ const VideoPlayer = ({ videoUrl, setVideoUrl }: VideoPlayerProps): JSX.Element =
             className="w-full aspect-video rounded-lg"
             allowFullScreen
           />
+          <button
+            className="absolute bottom-5 md:bottom-25 left-5 bg-white rounded-full p-0.5 cursor-pointer z-20"
+            onClick={toggleLock}
+          >
+            {lock ? <Lock className="text-black" /> : <UnLock className="text-black" />}
+          </button>
         </div>
       ) : (
         <div className="w-full aspect-video bg-inherit flex justify-center items-center text-gray-500">

@@ -15,6 +15,7 @@ const Home = () => {
   const [inputUrl, setInputUrl] = useState<string>("");
   const [history, setHistory] = useState<Array<{ url: string; title: string }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [lock, setLock] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -47,9 +48,11 @@ const Home = () => {
     }
   }, [theme]);
 
+  const toggleLock = () => setLock(prev => !prev);
+
   const handlePlay = (url?: string) => {
     if (!inputUrl.trim() && !url) return;
-    setVideoUrl(url || inputUrl.trim());
+    !lock && setVideoUrl(url || inputUrl.trim());
     addHistory(url || inputUrl.trim());
   };
 
@@ -139,11 +142,11 @@ const Home = () => {
         `}>
           <div className="flex items-center gap-3 border border-inherit p-0.5 rounded-lg">
             <InputVideoUrl {...{ inputUrl, setInputUrl, handlePlay }} />
-            <PlayButton {...{ handlePlay }} />
+            <PlayButton {...{ handlePlay, lock }} />
           </div>
 
           <div className="mt-5 rounded-lg">
-            <VideoPlayer {...{ videoUrl, setVideoUrl }} />
+            <VideoPlayer {...{ videoUrl, setVideoUrl, lock, toggleLock }} />
           </div>
         </div>
         {history && history.length > 0 && (
