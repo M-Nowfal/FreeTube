@@ -97,11 +97,11 @@ const Create = (): JSX.Element => {
             type="checkbox"
             name="synchistory"
             id="synchistory"
-            className={`size-4 ${theme === "dark" ? "accent-white" : "accent-black"}`}
+            className={`size-4 ${theme === "dark" ? "accent-blue-500" : "accent-black"}`}
             checked={syncHistory}
             onChange={() => setSyncHistory(prev => !prev)}
           />
-          <label htmlFor="synchistory" className="text-sm font-medium text-gray-600">Sync History</label>
+          <label htmlFor="synchistory" className="text-sm font-medium">Sync History</label>
         </div>
 
         <button

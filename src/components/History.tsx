@@ -32,7 +32,7 @@ const History = ({ history, removeHistory, clearHistory, handlePlay, loading }: 
           style={{ backdropFilter: "blur(6px)" }}
           aria-hidden="true"
         >
-          <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} />
+          <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${theme === "dark" ? "0.4" : "0.2"})` }} />
           <div className="flex items-center gap-2">
             <div className={`bar bar-1 w-3 h-3 rounded-full ${theme === "dark" ? "bg-white" : "bg-black"}`} />
             <div className={`bar bar-2 w-3 h-3 rounded-full ${theme === "dark" ? "bg-white" : "bg-black"}`} />
