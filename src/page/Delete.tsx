@@ -5,13 +5,12 @@ import { AuthContext } from "../context/AuthProvider";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { LeftArrow } from "../components/Icons";
 
-const Create = (): JSX.Element => {
+const Delete = (): JSX.Element => {
   const { theme } = useContext(ThemeContext);
-  const { toggleAuth } = useContext(AuthContext);
+  const { toggleAuth, auth } = useContext(AuthContext);
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [syncHistory, setSyncHistory] = useState<boolean>(true);
+  const [confirmation, setConfirmation] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const navigate: NavigateFunction = useNavigate();
 
@@ -19,12 +18,11 @@ const Create = (): JSX.Element => {
     e.preventDefault();
     setLoading(true);
     try {
-      const history = syncHistory ? JSON.parse(localStorage.getItem("history") || "[]") : [];
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/create`, { username, password, confirmPassword, history });
-      if (res.status === 201) {
-        localStorage.setItem("auth", JSON.stringify({ isAuth: true, username }));
+      const res = await axios.delete(`${import.meta.env.VITE_API_URL}/delete`, { data: { username, password, confirmation } });
+      if (res.status === 200) {
+        localStorage.removeItem("auth");
         localStorage.removeItem("history");
-        toggleAuth(true, username);
+        toggleAuth(false, "");
         navigate("/", { replace: true });
       }
     } catch (err: unknown) {
@@ -53,12 +51,12 @@ const Create = (): JSX.Element => {
           }`}
       >
         <h2 className="text-2xl font-semibold text-center">
-          Create Account
+          Delete Account
         </h2>
 
         <input
           type="text"
-          placeholder="create a Username"
+          placeholder="Enter Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -70,7 +68,7 @@ const Create = (): JSX.Element => {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Enter Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -81,28 +79,16 @@ const Create = (): JSX.Element => {
         />
 
         <input
-          type="password"
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          type="type"
+          placeholder={`Type "Delete${auth.username}" for confirmation`}
+          value={confirmation}
+          onChange={(e) => setConfirmation(e.target.value)}
           required
           className={`w-full p-3 rounded-lg outline-none ${theme === "dark"
             ? "bg-black border border-white/20 text-white"
             : "bg-white border border-black/20 text-black"
             }`}
         />
-
-        <div className="ms-2 flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="synchistory"
-            id="synchistory"
-            className={`size-4 ${theme === "dark" ? "accent-white" : "accent-black"}`}
-            checked={syncHistory}
-            onChange={() => setSyncHistory(prev => !prev)}
-          />
-          <label htmlFor="synchistory" className="text-sm font-medium text-gray-600">Sync History</label>
-        </div>
 
         <button
           type="submit"
@@ -112,11 +98,11 @@ const Create = (): JSX.Element => {
             }`}
           disabled={loading}
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {loading ? "Deleting Account..." : "Delete Account"}
         </button>
       </form>
     </div>
   );
 };
 
-export default Create;
+export default Delete;

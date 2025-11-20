@@ -20,7 +20,7 @@ const InputVideoUrl = ({ inputUrl, setInputUrl, handlePlay }: InputVideoUrlProps
         onChange={(e) => setInputUrl(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handlePlay()}
         type="text"
-        className="w-full focus:outline-0 ps-2"
+        className={`w-full focus:outline-0 ps-2 ${theme === "dark" ? "placeholder-neutral-400" : "placeholder-neutral-500"}`}
         placeholder="Place the URL here"
       />
       {inputUrl && <button

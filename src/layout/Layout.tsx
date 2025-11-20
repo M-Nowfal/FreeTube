@@ -72,6 +72,19 @@ const Layout = () => {
               >
                 {auth.isAuth ? "Logout" : "Login"}
               </Link>
+
+              {auth.isAuth && <Link
+                to="/delete"
+                className="w-full py-2 rounded-lg font-semibold
+                border border-current text-center
+                hover:opacity-60 px-3 bg-red-700/60
+                transition-all duration-200"
+                onClick={() => setShowUserMenu(false)}
+                viewTransition
+                replace
+              >
+                Delete Account
+              </Link>}
             </div>
           </div>
         </div>

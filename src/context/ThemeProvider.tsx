@@ -9,14 +9,13 @@ type IThemeContext = {
 export const ThemeContext = createContext<IThemeContext>({ theme: "dark", toggleTheme: () => { } });
 
 const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (localStorage.getItem("theme") as Theme) || "dark";
+  });
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    if (savedTheme)
-      setTheme(savedTheme);
     localStorage.setItem("theme", theme);
-  }, []);
+  }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === "dark" ? "light" : "dark");
   return (

@@ -128,7 +128,7 @@ const Home = () => {
 
   return (
     <div className="flex flex-col justify-center items-center min-h-svh">
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3 mb-3 not-md:me-auto not-md:ps-3">
         <img src="/favicon.svg" alt="freetube" className={`${theme === "dark" ? "invert" : ""} w-12 h-12 md:w-15 md:h-15 lg:w-20 lg:h-20`} />
         <h1 className="font-bold text-2xl md:text-3xl lg:text-5xl">FreeTube</h1>
       </div>

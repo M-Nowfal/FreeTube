@@ -6,6 +6,7 @@ import Layout from "./layout/Layout";
 import ThemeProvider from "./context/ThemeProvider";
 import AuthProvider from "./context/AuthProvider";
 import Logout from "./page/Logout";
+import Delete from "./page/Delete";
 
 const App = () => {
   const router = createBrowserRouter([
@@ -16,7 +17,8 @@ const App = () => {
         { index: true, element: <Home /> },
         { path: "/login", element: <Login /> },
         { path: "/logout", element: <Logout /> },
-        { path: "/create", element: <Create /> }
+        { path: "/create", element: <Create /> },
+        { path: "/delete", element: <Delete /> },
       ]
     },
   ]);

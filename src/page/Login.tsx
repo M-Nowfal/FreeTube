@@ -20,6 +20,7 @@ const Login = () => {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/login`, { username, password });
       if (res.status === 200) {
         localStorage.setItem("auth", JSON.stringify({ isAuth: true, username }));
+        localStorage.removeItem("history");
         toggleAuth(true, username);
         navigate("/", { replace: true });
       }

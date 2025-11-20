@@ -9,6 +9,7 @@ const Logout = () => {
   useEffect(() => {
     if (confirm("Are you sure to logout")) {
       localStorage.removeItem("auth");
+      localStorage.removeItem("history");
       toggleAuth(false, "");
     }
 
