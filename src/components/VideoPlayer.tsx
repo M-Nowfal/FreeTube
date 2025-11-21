@@ -35,8 +35,9 @@ const VideoPlayer = ({ videoUrl, setVideoUrl, lock, toggleLock }: VideoPlayerPro
       {finalUrl ? (
         <div className="relative group">
           <button
-            className={`md:hidden group-hover:block absolute -right-1.5 -top-2 rounded-full p-1 cursor-pointer ${theme === "dark" ? "bg-white" : "bg-black"} hover:scale-110 transition-all`}
+            className={`md:hidden ${lock ? "hidden" : "group-hover:block"} absolute -right-1.5 -top-2 rounded-full p-1 cursor-pointer ${theme === "dark" ? "bg-white" : "bg-black"} hover:scale-110 transition-all`}
             onClick={() => setVideoUrl("")}
+            disabled={lock}
           >
             <X theme={theme} />
           </button>
