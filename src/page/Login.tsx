@@ -77,7 +77,7 @@ const Login = () => {
             className={`w-full py-2 mt-2 rounded font-medium transition ${theme === "dark"
               ? "bg-white text-black hover:bg-gray-200"
               : "bg-black text-white hover:bg-gray-800"
-              }`}
+              } ${loading ? "opacity-50 cursor-not-allowed" : "opacity-100"}`}
             disabled={loading}
           >
             {loading ? "Submitting..." : "Submit"}

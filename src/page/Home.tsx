@@ -20,6 +20,7 @@ const Home = () => {
   useEffect(() => {
     (async () => {
       if (auth.isAuth) {
+        setLoading(true);
         try {
           const res = await axios.get(`${import.meta.env.VITE_API_URL}/history?username=${auth.username}`);
           if (res.status === 200)
@@ -31,6 +32,8 @@ const Home = () => {
           }
           console.error(err);
           alert(err instanceof AxiosError ? (err.response?.data.message || err.message) : "Something went wrong");
+        } finally {
+          setLoading(false);
         }
       } else {
         setHistory(JSON.parse(window.localStorage.getItem("history") || "[]"));
@@ -142,9 +145,19 @@ const Home = () => {
         {history && history.length > 0 && (
           <History {...{
             history, removeHistory,
-            clearHistory, handlePlay, 
+            clearHistory, handlePlay,
             loading
           }} />
+        )}
+        {loading && history.length === 0 && (
+          <div className="flex flex-col gap-2 justify-center items-center mb-3 w-[97%] max-w-7xl xl:max-w-xl">
+            <div className="flex items-center gap-2 h-20">
+              <div className={`bar bar-1 w-3 h-3 rounded-full ${theme === "dark" ? "bg-white" : "bg-black"}`} />
+              <div className={`bar bar-2 w-3 h-3 rounded-full ${theme === "dark" ? "bg-white" : "bg-black"}`} />
+              <div className={`bar bar-3 w-3 h-3 rounded-full ${theme === "dark" ? "bg-white" : "bg-black"}`} />
+            </div>
+            <span className="animate-pulse">Loading History please wait</span>
+          </div>
         )}
       </div>
     </div>

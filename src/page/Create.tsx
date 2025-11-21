@@ -109,7 +109,7 @@ const Create = (): JSX.Element => {
           className={`w-full p-3 rounded-lg font-semibold mt-2 ${theme === "dark"
             ? "bg-white text-black"
             : "bg-black text-white"
-            }`}
+            } ${loading ? "opacity-50 cursor-not-allowed" : "opacity-100"}`}
           disabled={loading}
         >
           {loading ? "Creating Account..." : "Create Account"}
