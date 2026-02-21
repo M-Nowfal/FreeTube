@@ -11,13 +11,6 @@ const UserSchema = new Schema<IUser>({
   password: {
     type: String,
   },
-  playlist: [{
-    type: Schema.Types.ObjectId,
-    ref: "Playlist"
-  }],
-  videos: [{
-    type: String,
-  }]
 });
 
 export const User = models.User || model<IUser>("User", UserSchema);

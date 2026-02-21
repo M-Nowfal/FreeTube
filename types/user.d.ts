@@ -6,6 +6,4 @@ export interface IUser {
   profile: string;
   email: string;
   password?: string;
-  playlist: IPlaylist[];
-  videos: string[];
 }
