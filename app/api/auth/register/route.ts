@@ -22,7 +22,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const isExistingUser = await User.findOne({ username });
 
     if (isExistingUser) {
-      return NextResponse.json({ status: 401 });
+      return NextResponse.json({ message: "User already exist" }, { status: 401 });
     }
 
     const hashedPassword = await hash(password);

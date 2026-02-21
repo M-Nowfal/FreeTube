@@ -27,6 +27,7 @@ import { useUserStore } from "@/store/useUserStore";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 export function SideBar(): JSX.Element {
   const { user, setUser } = useUserStore();
@@ -34,12 +35,14 @@ export function SideBar(): JSX.Element {
   const { theme, setTheme } = useTheme();
   const { data, error, loading, mutate } = useMutate();
   const { toggleSidebar } = useSidebar();
+  const router = useRouter();
 
   useEffect(() => {
     if (data && !error) {
       setUser(null);
       setIsAuth(false);
       toast.success("Logged out successfully");
+      router.replace("/");
     }
     if (error) {
       toast.error(error.error);
