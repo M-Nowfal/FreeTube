@@ -6,14 +6,11 @@ const PlaylistSchema = new Schema<IPlaylist>({
     type: String,
     required: true
   },
-  title: {
+  channelTitle: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
-  videos: [{
-    type: String
-  }]
+  videos: [{}]
 });
 
 PlaylistSchema.index({ username: 1, title: 1 });

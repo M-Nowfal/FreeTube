@@ -1,7 +1,7 @@
 import { connectDataBase } from "@/utils/connect-db";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function POST(_req: NextRequest): Promise<NextResponse> {
+export async function POST(): Promise<NextResponse> {
   try {
     await connectDataBase();
     

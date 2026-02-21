@@ -1,5 +1,12 @@
+export interface IVideo {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  watched?: boolean;
+}
+
 export interface IPlaylist {
   username: string;
-  title: string;
-  videos: string[];
+  channelTitle: string;
+  videos: IVideo[];
 }

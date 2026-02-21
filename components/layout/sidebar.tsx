@@ -8,6 +8,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes";
 import { Bookmark, Home, LogIn, LogOut, Moon, Sun } from "lucide-react";
@@ -19,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { History, ListVideo, Search, Settings } from "lucide-react";
+import { ListVideo, Search, Settings } from "lucide-react";
 import { Alert } from "../others/alert";
 import { useMutate } from "@/hooks/useMutate";
 import { useUserStore } from "@/store/useUserStore";
@@ -32,6 +33,7 @@ export function SideBar(): JSX.Element {
   const { setIsAuth } = useAuth();
   const { theme, setTheme } = useTheme();
   const { data, error, loading, mutate } = useMutate();
+  const { toggleSidebar } = useSidebar();
 
   useEffect(() => {
     if (data && !error) {
@@ -40,7 +42,7 @@ export function SideBar(): JSX.Element {
       toast.success("Logged out successfully");
     }
     if (error) {
-      toast.error(error);
+      toast.error(error.error);
     }
   }, [data, error]);
 
@@ -51,10 +53,8 @@ export function SideBar(): JSX.Element {
   const links = [
     { href: user ? "/" : "", icon: <Home />, label: "Home" },
     { href: user ? "/playlist" : "", icon: <ListVideo />, label: "PlayList" },
-    { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Watch Later" },
+    { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Important" },
     { href: user ? "/search" : "", icon: <Search />, label: "Search" },
-    { href: user ? "/history" : "", icon: <History />, label: "History" },
-    { href: user ? "/settings" : "", icon: <Settings />, label: "Settings" },
   ];
 
   return (
@@ -80,6 +80,7 @@ export function SideBar(): JSX.Element {
           <Link
             key={i}
             href={link.href}
+            onClick={toggleSidebar}
             className={`flex items-center gap-3 p-1 mx-2 rounded-md hover:bg-accent transition-all ${!user ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <Button variant="secondary" size="icon">
@@ -92,7 +93,7 @@ export function SideBar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="mb-4">
         {!user ? (
-          <Link href="/auth/login" className="flex items-center text-emerald-500 gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
+          <Link href="/auth/login" onClick={toggleSidebar} className="flex items-center text-emerald-500 gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
             <Button variant="secondary" size="icon" className="text-emerald-600">
               <LogIn />
             </Button>

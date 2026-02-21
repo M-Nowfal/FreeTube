@@ -8,7 +8,7 @@ type HTTPMethods = "POST" | "PATCH" | "PUT" | "DELETE";
 
 export function useMutate(method: HTTPMethods = "POST") {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ status: number, error: string } | null>(null);
   const [data, setData] = useState<any>();
 
   async function mutate(
@@ -18,7 +18,7 @@ export function useMutate(method: HTTPMethods = "POST") {
     method2?: HTTPMethods
   ) {
     setLoading(true);
-    setError("");
+    setError(null);
     try {
       const config = { withCredentials: true, headers };
       let response;
@@ -41,8 +41,9 @@ export function useMutate(method: HTTPMethods = "POST") {
       setData(response?.data);
       return response?.data;
     } catch (err) {
+      const status = err instanceof AxiosError ? err.status || 500 : 500;
       const message = err instanceof AxiosError ? err.response?.data?.message || err.message : String(err);
-      setError(message);
+      setError({ status, error: message });
     } finally {
       setLoading(false);
     }

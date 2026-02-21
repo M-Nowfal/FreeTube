@@ -10,9 +10,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     await connectDataBase();
 
-    const { username, email, password } = await req.json();
+    const { username, password } = await req.json();
 
-    const user = await User.findOne({ username, email });
+    const user = await User.findOne({ username });
 
     if (!user) {
       return NextResponse.json(

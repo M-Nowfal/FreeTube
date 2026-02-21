@@ -26,11 +26,11 @@ export function Alert({ trigger, title, description, onContinue, loading }: Aler
         {trigger}
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <AlertDialogHeader>
+        <AlertDialogHeader className="text-start">
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="flex-row justify-end">
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onContinue} disabled={loading}>Continue</AlertDialogAction>
         </AlertDialogFooter>

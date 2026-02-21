@@ -8,12 +8,6 @@ const UserSchema = new Schema<IUser>({
     required: true,
     unique: true
   },
-  email: {
-    type: String,
-    trim: true,
-    required: true,
-    unique: true
-  },
   password: {
     type: String,
   },
@@ -25,7 +19,5 @@ const UserSchema = new Schema<IUser>({
     type: String,
   }]
 });
-
-UserSchema.index({ username: 1, email: 1 });
 
 export const User = models.User || model<IUser>("User", UserSchema);
