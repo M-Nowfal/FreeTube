@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { Loader } from "@/components/ui/loader";
@@ -25,6 +25,7 @@ interface IVideoStats {
 
 export default function SinglePlaylistPage() {
   const params = useParams();
+  const videoId = useSearchParams().get("videoId");
   const router = useRouter();
   
   const [playlist, setPlaylist] = useState<IPlaylist | null>(null);
@@ -47,7 +48,13 @@ export default function SinglePlaylistPage() {
         setPlaylist(data.playlist);
         
         if (data.playlist.videos.length > 0) {
-          handleVideoSelect(data.playlist.videos[0]);
+          const targetVideo = videoId 
+            ? data.playlist.videos.find((v: IVideoExtended) => 
+                v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
+              )
+            : null;
+
+          handleVideoSelect(targetVideo || data.playlist.videos[0]);
 
           const idsToFetch = data.playlist.videos
             .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
@@ -161,9 +168,10 @@ export default function SinglePlaylistPage() {
         
         <div className="lg:w-[70%] lg:sticky lg:top-6 h-fit space-y-4">
           
-          <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden border border-border">
+          <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden">
             {currentVideoId ? (
               <iframe
+                key={currentVideoId}
                 className="w-full h-full"
                 src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
                 title="YouTube video player"

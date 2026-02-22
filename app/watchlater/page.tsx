@@ -133,7 +133,7 @@ export default function WatchLaterPage() {
 
       {/* Inline Video Player (Shows when a video is clicked) */}
       {playingVideo && (
-        <div className="sticky top-0 z-20 sm:relative w-full max-w-5xl mx-auto bg-black rounded-xl shadow-lg border border-border mt-8">
+        <div className="sticky top-0 z-20 sm:relative w-full max-w-5xl mx-auto bg-black rounded-xl shadow-lg mt-8">
           <div className="absolute top-1 right-1 z-10 bg-primary/80 rounded-full">
             <button onClick={() => setPlayingVideo(null)} className="cursor-pointer p-1 flex text-primary-foreground">
               <X className="h-4 w-4" strokeWidth={3} />

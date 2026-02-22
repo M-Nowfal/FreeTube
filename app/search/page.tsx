@@ -99,7 +99,7 @@ export default function SearchPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredVideos.map((video, idx) => (
             // Wrapping in a Link so clicking the video opens that specific playlist page
-            <Link href={`/playlist/${video.playlistId}`} key={idx} className="block group">
+            <Link href={`/playlist/${video.playlistId}?videoId=${video.videoId}`} key={idx} className="block group">
               <div className="cursor-pointer flex flex-col gap-3">
                 
                 {/* Thumbnail */}
