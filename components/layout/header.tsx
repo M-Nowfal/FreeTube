@@ -46,12 +46,12 @@ export function Header(): JSX.Element {
   const links = [
     { href: "/", icon: <Home size={20} />, label: "Home" },
     { href: "/playlist", icon: <ListVideo size={20} />, label: "PlayList" },
-    { href: "/watchlater", icon: <Bookmark size={20} />, label: "Important" },
+    { href: "/watchlater", icon: <Bookmark size={20} />, label: "Watch Later" },
     { href: "/search", icon: <Search size={20} />, label: "Search" }
   ];
 
   return (
-    <header className={`p-2 w-full flex items-center justify-between ${pathname.startsWith("/playlist") ? "sm:sticky" : "sticky"} top-0 z-50 bg-background border-b dark:border-neutral-700`}>
+    <header className={`p-2 w-full flex items-center justify-between ${pathname.startsWith("/playlist") || pathname.startsWith("/watchlater") ? "sm:sticky" : "sticky"} top-0 z-50 bg-background border-b dark:border-neutral-700`}>
       <div className="flex items-center gap-3">
         {isAuth && <SidebarTrigger className="mt-1 sm:hidden" />}
 

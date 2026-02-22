@@ -56,7 +56,7 @@ export function SideBar(): JSX.Element {
   const links = [
     { href: user ? "/" : "", icon: <Home />, label: "Home" },
     { href: user ? "/playlist" : "", icon: <ListVideo />, label: "PlayList" },
-    { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Important" },
+    { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Watch Later" },
     { href: user ? "/search" : "", icon: <Search />, label: "Search" },
   ];
 

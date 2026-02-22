@@ -27,7 +27,7 @@ export default function WatchLaterPage() {
   const [loading, setLoading] = useState(false);
   const [videos, setVideos] = useState<IWatchLaterVideo[]>([]);
   const [fetchingVideos, setFetchingVideos] = useState(true);
-  
+
   // State to handle inline video playing
   const [playingVideo, setPlayingVideo] = useState<IWatchLaterVideo | null>(null);
 
@@ -69,7 +69,7 @@ export default function WatchLaterPage() {
       };
 
       const { data } = await axios.post("/api/watch-later", payload);
-      
+
       setVideos([data.video, ...videos]); // Add to top of list
       toast.success("Added to Watch Later!");
       setUrl("");
@@ -82,7 +82,7 @@ export default function WatchLaterPage() {
 
   const handlePlayVideo = async (video: IWatchLaterVideo) => {
     setPlayingVideo(video);
-    
+
     // Mark as watched in DB if it isn't already
     if (!video.watched) {
       try {
@@ -106,21 +106,24 @@ export default function WatchLaterPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-8">
-      
+    <div className="container mx-auto sm:p-6 max-w-7xl space-y-8">
+
       {/* Header & Input */}
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Important</h1>
-        <p className="text-muted-foreground">Save important videos here to watch them when you have time.</p>
-        
-        <form onSubmit={handleAddVideo} className="flex gap-4 max-w-2xl">
-          <Input
-            placeholder="Paste YouTube Video URL here..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="flex-1"
-            disabled={loading}
-          />
+      <div className="space-y-4 py-4">
+        <h1 className="text-3xl font-bold tracking-tight px-4">Watch Later</h1>
+        <p className="text-muted-foreground px-4">Save Watch Later videos here to watch them when you have time.</p>
+
+        <form onSubmit={handleAddVideo} className="flex gap-4 max-w-2xl px-4">
+          <div className="relative flex-1">
+            <Input
+              placeholder="Paste YouTube Video URL here..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              disabled={loading}
+              className="pe-8"
+            />
+            {url && <X className="absolute top-1.5 right-1.5" onClick={() => setUrl("")} />}
+          </div>
           <Button type="submit" disabled={loading}>
             {loading ? <Loader className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             Add
@@ -130,15 +133,15 @@ export default function WatchLaterPage() {
 
       {/* Inline Video Player (Shows when a video is clicked) */}
       {playingVideo && (
-        <div className="relative w-full max-w-5xl mx-auto bg-black rounded-xl shadow-lg border border-border mt-8">
-          <div className="absolute -top-2 -right-2 z-10 bg-primary/80 rounded-full">
+        <div className="sticky top-0 z-20 sm:relative w-full max-w-5xl mx-auto bg-black rounded-xl shadow-lg border border-border mt-8">
+          <div className="absolute top-1 right-1 z-10 bg-primary/80 rounded-full">
             <button onClick={() => setPlayingVideo(null)} className="cursor-pointer p-1 flex text-primary-foreground">
               <X className="h-4 w-4" strokeWidth={3} />
             </button>
           </div>
           <div className="aspect-video w-full">
             <iframe
-              className="w-full h-full rounded-t-lg"
+              className="w-full h-full sm:rounded-t-lg"
               src={`https://www.youtube.com/embed/${playingVideo.videoId}?autoplay=1`}
               title="YouTube video player"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -157,16 +160,16 @@ export default function WatchLaterPage() {
         <div className="flex justify-center h-[60vh] items-center"><Loader size={50} /></div>
       ) : videos.length === 0 ? (
         <div className="text-center p-12 text-muted-foreground border border-dashed rounded-lg">
-          Your Important list is empty. Add a video to get started!
+          Your Watch Later list is empty. Add a video to get started!
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
           {videos.map((video) => (
             <div key={video._id} className="group relative flex flex-col gap-3">
-              
+
               {/* Delete Button */}
               <div className="absolute top-2 right-2 z-10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                <Alert 
+                <Alert
                   title="Remove Video"
                   description="Remove this video from your Watch Later list?"
                   onContinue={() => handleRemoveVideo(video._id)}
@@ -179,7 +182,7 @@ export default function WatchLaterPage() {
               </div>
 
               {/* Thumbnail Container (Clickable) */}
-              <div 
+              <div
                 className="relative aspect-video rounded-xl overflow-hidden bg-muted cursor-pointer"
                 onClick={() => handlePlayVideo(video)}
               >
@@ -195,7 +198,7 @@ export default function WatchLaterPage() {
                     <PlaySquare className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}
-                
+
                 {/* Watched Badge */}
                 {video.watched && (
                   <div className="absolute bottom-2 right-2 bg-black/80 text-green-400 text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1.5 backdrop-blur-sm border border-green-500/20">
@@ -212,7 +215,7 @@ export default function WatchLaterPage() {
 
               {/* Info */}
               <div className="flex flex-col pr-2">
-                <h3 
+                <h3
                   className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-primary transition-colors wrap-break-word"
                   onClick={() => handlePlayVideo(video)}
                 >
