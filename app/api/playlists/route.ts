@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Playlist } from "@/models/playlist.model"; // Adjust this path if necessary
 import { connectDataBase } from "@/utils/connect-db";
+import { IVideo } from "@/types/playlist";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,11 @@ export async function POST(req: NextRequest) {
     let playlist = await Playlist.findOne({ username, channelTitle });
 
     if (playlist) {
+      const isExistingVideo = playlist.videos?.some((v: IVideo) => v.videoId === video.videoId);
+      if (isExistingVideo) {
+        return NextResponse.json({ message: "Video already added to the playlist." }, { status: 400 });
+      }
+
       // If it exists, push the new video
       playlist.videos.push(video);
       await playlist.save();

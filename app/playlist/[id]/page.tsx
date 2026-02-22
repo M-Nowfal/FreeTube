@@ -155,13 +155,13 @@ export default function SinglePlaylistPage() {
   const displayDescription = currentStats?.description ?? "";
 
   return (
-    <div className="w-full p-1 sm:px-6 lg:px-8">
+    <div className="w-full sm:p-1 sm:px-6 lg:px-8">
       
-      <div className="flex flex-col lg:flex-row gap-6 w-full overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-6 w-full">
         
         <div className="lg:w-[70%] lg:sticky lg:top-6 h-fit space-y-4">
           
-          <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-border">
+          <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden border border-border">
             {currentVideoId ? (
               <iframe
                 className="w-full h-full"
@@ -216,7 +216,7 @@ export default function SinglePlaylistPage() {
         </div>
 
         {/* FIX 3: Changed min-w-75 to lg:min-w-75 so mobile doesn't inherit a forced fixed width */}
-        <div className="lg:w-[30%] flex flex-col max-h-[calc(100vh-5rem)] lg:min-w-75">
+        <div className="lg:w-[30%] flex flex-col max-h-[calc(100vh-20rem)] sm:max-h-[calc(100vh-5rem)] lg:min-w-75 p-2">
           <div className="border border-border rounded-xl flex flex-col h-full bg-card overflow-hidden">
             
             <div className="p-4 bg-secondary/30 border-b border-border flex items-center justify-between shrink-0">
@@ -238,7 +238,7 @@ export default function SinglePlaylistPage() {
               />
             </div>
             
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-2">
               {playlist.videos.map((video: IVideoExtended, idx) => {
                 const isPlaying = currentVideo?.title === video.title;
                 

@@ -13,7 +13,7 @@ import { Button } from "../ui/button";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader } from "../ui/loader";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Alert } from "../others/alert";
 import { useMutate } from "@/hooks/useMutate";
@@ -25,6 +25,7 @@ export function Header(): JSX.Element {
   const { setUser } = useUserStore();
   const router = useRouter();
   const { data, error, mutate } = useMutate();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (data && !error) {
@@ -50,7 +51,7 @@ export function Header(): JSX.Element {
   ];
 
   return (
-    <header className="p-2 w-full flex items-center justify-between sticky top-0 z-50 bg-background border-b dark:border-neutral-700">
+    <header className={`p-2 w-full flex items-center justify-between ${pathname.startsWith("/playlist") ? "sm:sticky" : "sticky"} top-0 z-50 bg-background border-b dark:border-neutral-700`}>
       <div className="flex items-center gap-3">
         {isAuth && <SidebarTrigger className="mt-1 sm:hidden" />}
 
