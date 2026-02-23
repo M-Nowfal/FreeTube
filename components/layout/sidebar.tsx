@@ -31,7 +31,6 @@ import { useRouter } from "next/navigation";
 
 export function SideBar(): JSX.Element {
   const { user, setUser } = useUserStore();
-  const { setIsAuth } = useAuth();
   const { theme, setTheme } = useTheme();
   const { data, error, loading, mutate } = useMutate();
   const { toggleSidebar } = useSidebar();
@@ -40,9 +39,9 @@ export function SideBar(): JSX.Element {
   useEffect(() => {
     if (data && !error) {
       setUser(null);
-      setIsAuth(false);
       toast.success("Logged out successfully");
       router.replace("/");
+      window.location.reload();
     }
     if (error) {
       toast.error(error.error);
@@ -51,6 +50,10 @@ export function SideBar(): JSX.Element {
 
   async function logout() {
     await mutate("/auth/logout");
+  }
+
+  async function signout() {
+    await mutate("/auth/signout", undefined, undefined, "DELETE");
   }
 
   const links = [
@@ -103,20 +106,36 @@ export function SideBar(): JSX.Element {
             <span>LogIn</span>
           </Link>
         ) : (
-          <Alert
-            trigger={
-              <div className="flex items-center text-red-500 gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
-                <Button variant="secondary" className="text-red-600" size="icon">
-                  <LogOut />
-                </Button>
-                <span>Logout</span>
-              </div>
-            }
-            title="Confirm Logout"
-            description="Are you sure you want to log out? You&apos;ll need to sign in again to access your account."
-            onContinue={logout}
-            loading={loading}
-          />
+          <>
+            <Alert
+              trigger={
+                <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
+                  <Button variant="secondary" size="icon">
+                    <LogOut />
+                  </Button>
+                  <span>Logout</span>
+                </div>
+              }
+              title="Confirm Logout"
+              description="Are you sure you want to log out? You&apos;ll need to sign in again to access your account."
+              onContinue={logout}
+              loading={loading}
+            />
+            <Alert
+              trigger={
+                <div className="flex items-center text-red-500 gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
+                  <Button variant="secondary" className="text-red-600" size="icon">
+                    <LogOut />
+                  </Button>
+                  <span>Sign-Out</span>
+                </div>
+              }
+              title="Confirm Logout"
+              description="Are you sure you want to sign out? All you data will be permanently deleted. This action can't be undone."
+              onContinue={signout}
+              loading={loading}
+            />
+          </>
         )}
         <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
           <DropdownMenu>

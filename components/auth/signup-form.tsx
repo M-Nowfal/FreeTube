@@ -64,6 +64,7 @@ export function SignupForm({
       setUser(data.user);
       toast.success(data.message);
       router.replace("/");
+      setTimeout(() => window.location.reload(), 2000);
     }
   }, [data, error]);
 

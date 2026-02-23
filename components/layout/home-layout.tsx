@@ -6,6 +6,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { SideBar } from "@/components/layout/sidebar";
 import { usePathname } from "next/navigation";
 import BottomBar from "./bottom-bar";
+import { useAuth } from "@/hooks/useAuth";
 
 export function HomeLayout({
   children,
@@ -13,6 +14,7 @@ export function HomeLayout({
   children: React.ReactNode;
 }>): JSX.Element {
   const pathname = usePathname();
+  const { isAuth } = useAuth();
 
   return (
     <SidebarProvider>
@@ -24,7 +26,7 @@ export function HomeLayout({
             {children}
           </main>
         </div>
-        {(pathname !== "/auth/login" && pathname !== "/auth/signup") && <BottomBar />}
+        {(isAuth && pathname !== "/auth/login" && pathname !== "/auth/signup") && <BottomBar />}
       </div>
     </SidebarProvider>
   );

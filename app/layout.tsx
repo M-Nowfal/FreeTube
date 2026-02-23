@@ -48,6 +48,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Toaster
+          position="top-center"
             swipeDirections={["left", "right", "top"]}
             expand
             duration={5000}
