@@ -22,7 +22,7 @@ export default function BottomBar() {
   if (pathname.startsWith("/auth")) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 z-50 w-full h-12 bg-background border-t border-border flex items-center justify-around md:hidden">
+    <nav className="fixed bottom-0 left-0 z-50 w-full h-12 bg-background border-t border-border flex items-center justify-around sm:hidden">
       {links.map((link) => {
         const Icon = link.icon;
         
