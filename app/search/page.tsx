@@ -3,13 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader } from "@/components/ui/loader";
+import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/store/useUserStore";
 import Image from "next/image";
 import Link from "next/link";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { API_URL } from "@/utils/constants";
-import { PlaySquare, Search } from "lucide-react";
+import { PlaySquare, Search, Tv } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface IFlatVideo extends IVideo {
   playlistId: string;
@@ -19,10 +23,20 @@ interface IFlatVideo extends IVideo {
 }
 
 export default function SearchPage() {
+  const { isAuth, loading: authLoading } = useAuth();
   const { user } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [allVideos, setAllVideos] = useState<IFlatVideo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuth && !authLoading) {
+      toast.info("Login to access channels.");
+      router.replace("/auth/login");
+      return;
+    }
+  }, [authLoading, isAuth, router]);
 
   useEffect(() => {
     const fetchAllVideos = async () => {
@@ -32,16 +46,14 @@ export default function SearchPage() {
         const { data } = await axios.get(`${API_URL}/playlists?username=${user.username}`);
         const playlists: IPlaylist[] = data.playlists;
 
-        // Flatten: Go through every playlist, and pull its videos out into one single list
         const flattenedVideos = playlists.flatMap((playlist: any) =>
           playlist.videos.map((video: IVideo) => ({
             ...video,
-            playlistId: playlist._id, // Keep the ID so we can click it and go to the player
+            playlistId: playlist._id,
             channelTitle: playlist.channelTitle,
           }))
         );
 
-        // Reverse so the most recently added videos show up first
         setAllVideos(flattenedVideos.reverse());
       } catch (error) {
         console.error("Failed to load videos", error);
@@ -53,7 +65,6 @@ export default function SearchPage() {
     fetchAllVideos();
   }, [user]);
 
-  // useMemo ensures we don't re-calculate the filter on every single render, only when query/videos change
   const filteredVideos = useMemo(() => {
     if (!searchQuery.trim()) return allVideos;
 
@@ -67,10 +78,16 @@ export default function SearchPage() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-8">
-      
-      {/* Search Header */}
-      <div className="flex flex-col space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Search Videos</h1>
+      <div className="flex flex-col space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold tracking-tight">Search Videos</h1>
+          <Button asChild className="w-full sm:w-auto shrink-0">
+            <Link href="/channels">
+              <Tv className="mr-2 h-4 w-4" /> Discover Channels
+            </Link>
+          </Button>
+        </div>
+
         <div className="relative max-w-2xl w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
@@ -82,7 +99,6 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Video Grid */}
       {loading ? (
         <div className="flex justify-center h-[50vh] items-center">
           <Loader size={50} />
@@ -98,11 +114,8 @@ export default function SearchPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredVideos.map((video, idx) => (
-            // Wrapping in a Link so clicking the video opens that specific playlist page
             <Link href={`/playlist/${video.playlistId}?videoId=${video.videoId}`} key={idx} className="block group">
               <div className="cursor-pointer flex flex-col gap-3">
-                
-                {/* Thumbnail */}
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
                   {video.thumbnail ? (
                     <Image
@@ -116,7 +129,6 @@ export default function SearchPage() {
                       <PlaySquare className="h-8 w-8 text-muted-foreground" />
                     </div>
                   )}
-                  {/* Watched Indicator (Optional, based on your previous schema) */}
                   {video.watched && (
                     <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded-md font-medium">
                       Watched
@@ -124,7 +136,6 @@ export default function SearchPage() {
                   )}
                 </div>
 
-                {/* Video Info */}
                 <div className="flex flex-col">
                   <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
                     {video.title}
@@ -133,7 +144,6 @@ export default function SearchPage() {
                     {video.channelTitle}
                   </p>
                 </div>
-
               </div>
             </Link>
           ))}

@@ -29,6 +29,7 @@ export function useAuth(): UseAuth {
   }
 
   useEffect(() => {
+    if (isAuth) return;
     setLoading(true);
     getCurrentUser()
       .catch(() => setIsAuth(false))

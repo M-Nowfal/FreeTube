@@ -16,7 +16,7 @@ export default function AuthLayout({
 
   return (
     <div>
-      <header className="absolute p-2 w-full flex items-center justify-between">
+      <header className="sticky top-0 p-2 w-full flex items-center justify-between backdrop-blur-md z-20">
         <div className="flex items-center gap-5">
           <Button variant="none" onClick={() => router.back()}>
             <ArrowLeft strokeWidth={3} />

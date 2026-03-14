@@ -11,6 +11,8 @@ import Image from "next/image";
 import { PlaySquare, Plus, Trash2, CheckCircle, X, Play } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { Alert } from "@/components/others/alert";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 interface IWatchLaterVideo {
   _id: string;
@@ -22,14 +24,24 @@ interface IWatchLaterVideo {
 }
 
 export default function WatchLaterPage() {
+  const { isAuth, loading: authLoading } = useAuth();
   const { user } = useUserStore();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [videos, setVideos] = useState<IWatchLaterVideo[]>([]);
   const [fetchingVideos, setFetchingVideos] = useState(true);
+  const router = useRouter();
 
   // State to handle inline video playing
   const [playingVideo, setPlayingVideo] = useState<IWatchLaterVideo | null>(null);
+
+  useEffect(() => {
+    if (!isAuth && !authLoading) {
+      toast.info("Login to access channels.");
+      router.replace("/auth/login");
+      return;
+    }
+  }, [authLoading, isAuth, router]);
 
   useEffect(() => {
     if (user?.username) fetchVideos();
