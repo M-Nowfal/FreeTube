@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ListVideo, Bookmark, Search } from "lucide-react";
+import { Home, ListVideo, Bookmark, Search, PlaySquare } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore";
 
 export default function BottomBar() {
@@ -14,6 +14,7 @@ export default function BottomBar() {
   const links = [
     { href: user ? "/" : "/auth/login", icon: Home, label: "Home" },
     { href: user ? "/playlist" : "/auth/login", icon: ListVideo, label: "PlayList" },
+    { href: user ? "/channels" : "/auth/login", icon: PlaySquare, label: "Subscription" },
     { href: user ? "/watchlater" : "/auth/login", icon: Bookmark, label: "Watch Later" },
     { href: user ? "/search" : "/auth/login", icon: Search, label: "Search" },
   ];

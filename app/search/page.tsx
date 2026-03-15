@@ -3,14 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader } from "@/components/ui/loader";
-import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/store/useUserStore";
 import Image from "next/image";
 import Link from "next/link";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { API_URL } from "@/utils/constants";
-import { PlaySquare, Search, Tv } from "lucide-react";
+import { PlaySquare, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -79,14 +78,7 @@ export default function SearchPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-8">
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Search Videos</h1>
-          <Button asChild className="w-full sm:w-auto shrink-0">
-            <Link href="/channels">
-              <Tv className="mr-2 h-4 w-4" /> Discover Channels
-            </Link>
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">Search Videos</h1>
 
         <div className="relative max-w-2xl w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

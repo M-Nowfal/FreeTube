@@ -1,12 +1,5 @@
+import { IVideo } from "@/types/playlist";
 import { model, models, Schema, Document } from "mongoose";
-
-export interface IVideo {
-  videoId: string;
-  title: string;
-  thumbnail: string;
-  channelTitle: string;
-  publishedAt: string;
-}
 
 export interface IPlaylist extends Document {
   username: string;
@@ -19,7 +12,8 @@ const VideoSchema = new Schema<IVideo>({
   title: { type: String, required: true },
   thumbnail: { type: String, required: true },
   channelTitle: { type: String, required: true },
-  publishedAt: { type: String }
+  publishedAt: { type: String },
+  watched: { type: Boolean, default: false }
 });
 
 const PlaylistSchema = new Schema<IPlaylist>({

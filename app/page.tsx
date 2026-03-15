@@ -25,19 +25,21 @@ export default function Page() {
                     focus-within:ring-ring
                     focus-within:ring-offset-2
                     focus-within:ring-offset-background
-                  ">
-          <Input
-            placeholder="Place the URL here"
-            type="text"
-            className="border-none shadow-none rounded-l-lg py-5 focus-visible:ring-0"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && input.trim()) setVideoUrl(input);
-            }}
-          />
-          {input.trim() && <X className="me-2" onClick={() => setInput("")} />}
-
+                  "
+        >
+          <div className="flex-1 relative">
+            <Input
+              placeholder="Place the URL here"
+              type="text"
+              className="border-none shadow-none rounded-l-lg py-5 pe-10 focus-visible:ring-0"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && input.trim()) setVideoUrl(input);
+              }}
+            />
+            {input.trim() && <X className="me-2 absolute right-0 top-2" onClick={() => setInput("")} />}
+          </div>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="secondary" className="rounded-l-none py-5" onClick={() => input.trim() && setVideoUrl(input)}>

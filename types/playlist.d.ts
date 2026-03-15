@@ -3,7 +3,7 @@ export interface IVideo {
   title: string;
   thumbnail: string;
   channelTitle: string;
-  publishedAt: Date;
+  publishedAt: string;
   watched?: boolean;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Home, ListVideo, LogOut, Search, Settings } from "lucide-react";
+import { Bookmark, Home, ListVideo, LogOut, PlaySquare, Search, Settings } from "lucide-react";
 import Image from "next/image";
 import { JSX, useEffect } from "react";
 import { SidebarTrigger } from "../ui/sidebar";
@@ -46,6 +46,7 @@ export function Header(): JSX.Element {
   const links = [
     { href: "/", icon: <Home size={20} />, label: "Home" },
     { href: "/playlist", icon: <ListVideo size={20} />, label: "PlayList" },
+    { href: "/channels", icon: <PlaySquare size={20} />, label: "Subscription" },
     { href: "/watchlater", icon: <Bookmark size={20} />, label: "Watch Later" },
     { href: "/search", icon: <Search size={20} />, label: "Search" }
   ];
@@ -76,7 +77,7 @@ export function Header(): JSX.Element {
               <Tooltip key={link.label}>
                 <TooltipTrigger asChild>
                   <Link href={link.href} className="flex items-center gap-1 bg-accent p-2 md:py-1 md:px-3 rounded-full">
-                    {link.icon} <span className="hidden md:inline-block text-sm">{link.label}</span>
+                    {link.icon} <span className="hidden lg:inline-block text-sm">{link.label}</span>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent>

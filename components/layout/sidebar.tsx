@@ -11,7 +11,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes";
-import { Bookmark, Home, LogIn, LogOut, Moon, Sun } from "lucide-react";
+import { Bookmark, Home, LogIn, LogOut, Moon, PlaySquare, Sun } from "lucide-react";
 import { Button } from "../ui/button";
 import Image from "next/image";
 import {
@@ -59,6 +59,7 @@ export function SideBar(): JSX.Element {
   const links = [
     { href: user ? "/" : "", icon: <Home />, label: "Home" },
     { href: user ? "/playlist" : "", icon: <ListVideo />, label: "PlayList" },
+    { href: user ? "/channels" : "", icon: <PlaySquare />, label: "Subscriptions" },
     { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Watch Later" },
     { href: user ? "/search" : "", icon: <Search />, label: "Search" },
   ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, ExternalLink, UserPlus } from "lucide-react";
+import { Search, ExternalLink, UserPlus, UserMinus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,23 +9,33 @@ import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useUserStore } from "@/store/useUserStore"; // Import the store
+import { useUserStore } from "@/store/useUserStore";
+import { AxiosError } from "axios";
+import Link from "next/link";
 
 interface IChannel {
   channelId: string;
   title: string;
-  description: string;
+  description?: string; // Made optional since DB subscriptions don't save description
   thumbnail: string;
 }
 
 export default function SearchChannelsPage() {
   const { isAuth, loading: authLoading } = useAuth();
-  const { user } = useUserStore(); // Get the current user from the store
+  const { user } = useUserStore();
+
+  // Search state
   const [query, setQuery] = useState("");
   const [channels, setChannels] = useState<IChannel[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Subscriptions state
+  const [subscribedChannels, setSubscribedChannels] = useState<IChannel[]>([]);
+  const [fetchingSubs, setFetchingSubs] = useState(true);
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
+  const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
+
   const router = useRouter();
 
   useEffect(() => {
@@ -35,6 +45,28 @@ export default function SearchChannelsPage() {
       return;
     }
   }, [authLoading, isAuth, router]);
+
+  // Fetch subscribed channels on mount
+  useEffect(() => {
+    if (user?.username) {
+      fetchSubscribedChannels();
+    }
+  }, [user]);
+
+  const fetchSubscribedChannels = async () => {
+    setFetchingSubs(true);
+    try {
+      const res = await fetch(`/api/subscriptions?username=${user?.username}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSubscribedChannels(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch subscriptions", error);
+    } finally {
+      setFetchingSubs(false);
+    }
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -57,10 +89,7 @@ export default function SearchChannelsPage() {
   };
 
   const handleSubscribe = async (channel: IChannel) => {
-    if (!user?.username) {
-      toast.error("User not found. Please log in again.");
-      return;
-    }
+    if (!user?.username) return toast.error("User not found. Please log in again.");
 
     setSubscribingIds((prev) => new Set(prev).add(channel.channelId));
 
@@ -72,15 +101,20 @@ export default function SearchChannelsPage() {
           channelId: channel.channelId,
           title: channel.title,
           thumbnail: channel.thumbnail,
-          username: user.username // Use the actual logged-in user's username here
+          username: user.username
         }),
       });
 
       if (!res.ok) throw new Error("Failed to subscribe");
 
       toast.success(`Subscribed to ${channel.title}`);
-    } catch (error) {
-      toast.error("Error subscribing to channel");
+      fetchSubscribedChannels(); // Refresh the subscriptions list
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.status === 409) {
+        toast.error(err.response.data.message);
+      } else {
+        toast.error("Error subscribing to channel");
+      }
     } finally {
       setSubscribingIds((prev) => {
         const newSet = new Set(prev);
@@ -90,14 +124,41 @@ export default function SearchChannelsPage() {
     }
   };
 
-  return (
-    <div className="container mx-auto p-8">
-      <div className="max-w-2xl mx-auto text-center mb-10">
-        <h1 className="text-4xl font-bold mb-4">Discover Channels</h1>
+  const handleUnsubscribe = async (channelId: string, channelTitle: string) => {
+    if (!user?.username) return;
 
+    setUnsubscribingIds((prev) => new Set(prev).add(channelId));
+
+    try {
+      const res = await fetch(`/api/subscriptions?username=${user.username}&channelId=${channelId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Failed to unsubscribe");
+
+      toast.success(`Unsubscribed from ${channelTitle}`);
+      // Optimistically remove it from the UI
+      setSubscribedChannels((prev) => prev.filter((c) => c.channelId !== channelId));
+    } catch (error) {
+      toast.error("Error unsubscribing");
+    } finally {
+      setUnsubscribingIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(channelId);
+        return newSet;
+      });
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4 space-y-12">
+
+      {/* Search Section */}
+      <div className="max-w-2xl mx-auto text-start mt-4">
+        <h1 className="text-3xl font-bold mb-4">Discover Channels</h1>
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input
-            type="text"
+            type="search"
             placeholder="Search channels..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -110,72 +171,136 @@ export default function SearchChannelsPage() {
         </form>
       </div>
 
+      {/* Search Results */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader size={50} />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {channels.map((channel) => (
-            <Card
-              key={channel.channelId}
-              className="flex flex-col group overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-300 bg-card/50 hover:bg-card"
-            >
-              <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-5">
-                <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300">
-                  <img
-                    src={channel.thumbnail}
-                    alt={channel.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5 overflow-hidden">
-                  <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
-                    {channel.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm line-clamp-2 leading-snug">
-                    {channel.description || "No description available."}
-                  </CardDescription>
-                </div>
-              </CardHeader>
+      ) : channels.length > 0 ? (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold">Search Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {channels.map((channel) => (
+              <Card
+                key={channel.channelId}
+                className="flex flex-col group overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-300 bg-card/50 hover:bg-card"
+              >
+                <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-5">
+                  <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300">
+                    <img src={channel.thumbnail} alt={channel.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col gap-1.5 overflow-hidden">
+                    <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
+                      {channel.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm line-clamp-2 leading-snug">
+                      {channel.description || "No description available."}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
 
-              <CardContent className="flex-1 flex flex-col justify-end p-5 pt-0 mt-2">
-                <div className="flex flex-col gap-2.5 w-full">
-                  <Button
-                    onClick={() => handleSubscribe(channel)}
-                    disabled={subscribingIds.has(channel.channelId)}
-                    className="w-full font-semibold shadow-sm transition-transform active:scale-[0.98]"
-                  >
-                    {subscribingIds.has(channel.channelId) ? (
-                      <Loader />
-                    ) : (
-                      <UserPlus className="h-4 w-4 mr-2" />
-                    )}
-                    Subscribe
-                  </Button>
-
-                  <Button variant="outline" className="w-full transition-transform active:scale-[0.98]" asChild>
-                    <a
-                      href={`https://www.youtube.com/channel/${channel.channelId}`}
-                      target="_blank"
-                      rel="noreferrer"
+                <CardContent className="flex-1 flex flex-col justify-end p-5 pt-0 mt-2">
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <Button
+                      onClick={() => handleSubscribe(channel)}
+                      disabled={subscribingIds.has(channel.channelId) || subscribedChannels.some(sub => sub.channelId === channel.channelId)}
+                      className="w-full font-semibold shadow-sm transition-transform active:scale-[0.98]"
                     >
-                      <ExternalLink className="h-4 w-4 mr-2 opacity-70" />
-                      Visit Channel
-                    </a>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      {subscribingIds.has(channel.channelId) ? (
+                        <Loader />
+                      ) : subscribedChannels.some(sub => sub.channelId === channel.channelId) ? (
+                        "Subscribed"
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4 mr-2" /> Subscribe
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" className="w-full transition-transform active:scale-[0.98]" asChild>
+                      <a href={`https://www.youtube.com/channel/${channel.channelId}`} target="_blank" rel="noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2 opacity-70" /> Visit Channel
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-      )}
+      ) : null}
 
       {hasSearched && !loading && channels.length === 0 && (
         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-          No channels found
+          No channels found for "{query}"
         </div>
       )}
+
+      {/* Divider */}
+      <div className="w-full h-px bg-border my-8"></div>
+
+      {/* Subscribed Channels Section */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold tracking-tight">Your Subscriptions</h2>
+
+        {fetchingSubs ? (
+          <div className="flex justify-center py-10"><Loader size={40} /></div>
+        ) : subscribedChannels.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground border border-dashed rounded-lg">
+            You haven't subscribed to any channels yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {subscribedChannels.map((channel) => (
+              <Card
+                key={channel.channelId}
+                onClick={() => router.push(`/channels/${channel.channelId}?title=${encodeURIComponent(channel.title)}`)}
+                className="gap-0 flex flex-col group overflow-hidden bg-card/50 hover:bg-card hover:shadow-md transition-all duration-300 cursor-pointer"
+              >
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border bg-muted">
+                    <img src={channel.thumbnail} alt={channel.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
+                      {channel.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1 text-muted-foreground">
+                      Subscribed Channel
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+
+                {/* Added e.stopPropagation() here to prevent card click when clicking buttons */}
+                <CardContent
+                  className="flex justify-end gap-2.5 pt-3 mt-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button variant="outline" asChild>
+                    <Link href={`https://www.youtube.com/channel/${channel.channelId}`} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      YouTube
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleUnsubscribe(channel.channelId, channel.title)}
+                    disabled={unsubscribingIds.has(channel.channelId)}
+                  >
+                    {unsubscribingIds.has(channel.channelId) ? (
+                      <Loader />
+                    ) : (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-2" /> Unsubscribe
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

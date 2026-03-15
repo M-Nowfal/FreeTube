@@ -48,26 +48,38 @@ export async function PATCH(
   try {
     await connectDataBase();
     const { id } = await params;
-    const { action, videoTitle } = await req.json();
+    const { action, videoId } = await req.json(); // Extract videoId instead of videoTitle
 
-    const playlist = await Playlist.findById(id);
-    if (!playlist) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    if (action === "MARK_WATCHED") {
+      // Find the specific playlist and the exact video inside the array, then set watched to true
+      const updatedPlaylist = await Playlist.findOneAndUpdate(
+        { _id: id, "videos.videoId": videoId },
+        { $set: { "videos.$.watched": true } },
+        { new: true }
+      );
+
+      if (!updatedPlaylist) return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json({ playlist: updatedPlaylist }, { status: 200 });
+    }
 
     if (action === "REMOVE_VIDEO") {
-      playlist.videos = playlist.videos.filter((v: IVideo) => v.title !== videoTitle);
-    }
-    else if (action === "MARK_WATCHED") {
-      const video = playlist.videos.find((v: IVideo) => v.title === videoTitle);
-      if (video) video.watched = true;
+      // Pull the video out of the array using its ID
+      const updatedPlaylist = await Playlist.findByIdAndUpdate(
+        id,
+        { $pull: { videos: { videoId: videoId } } },
+        { new: true }
+      );
+
+      if (!updatedPlaylist) return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json({ playlist: updatedPlaylist }, { status: 200 });
     }
 
-    // Mongoose needs to know the mixed array was modified
-    playlist.markModified('videos');
-    await playlist.save();
-
-    return NextResponse.json({ playlist }, { status: 200 });
+    return NextResponse.json({ message: "Invalid action" }, { status: 400 });
   } catch (error: unknown) {
     console.error(error);
-    return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
+    return NextResponse.json({
+      message: "Server Error",
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 });
   }
 }
