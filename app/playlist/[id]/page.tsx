@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
@@ -38,6 +38,8 @@ export default function SinglePlaylistPage() {
   const [showFullDesc, setShowFullDesc] = useState(false);
 
   const [videoStats, setVideoStats] = useState<Record<string, IVideoStats>>({});
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const extractVideoId = (thumbnailUrl: string) => {
     try {
@@ -84,6 +86,9 @@ export default function SinglePlaylistPage() {
   const handleVideoSelect = async (video: IVideoExtended) => {
     setCurrentVideo(video);
     setShowFullDesc(false);
+    
+    // Auto-scroll to top so user sees the new video playing
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
 
@@ -108,7 +113,6 @@ export default function SinglePlaylistPage() {
     }
   };
 
-  // --- NEW: Function to play the next video in the list ---
   const playNextVideo = () => {
     if (!playlist || !currentVideo) return;
 
@@ -119,33 +123,28 @@ export default function SinglePlaylistPage() {
       return vId === currentVidId;
     });
 
-    // If it's not the last video, play the next one
     if (currentIndex !== -1 && currentIndex + 1 < playlist.videos.length) {
       handleVideoSelect(playlist.videos[currentIndex + 1] as IVideoExtended);
     }
   };
 
-  // --- NEW: Event listener to detect when YouTube video ends ---
   useEffect(() => {
     const handleYouTubeMessage = (event: MessageEvent) => {
-      // Security check: ensure message is from YouTube
       if (event.origin !== "https://www.youtube.com") return;
 
       try {
         const data = JSON.parse(event.data);
-        // playerState 0 means the video has officially ended
         if (data.event === "infoDelivery" && data.info?.playerState === 0) {
           playNextVideo();
         }
       } catch (e) {
-        // Ignore JSON parsing errors for unrelated messages
+        // Ignore JSON parsing errors
       }
     };
 
     window.addEventListener("message", handleYouTubeMessage);
     return () => window.removeEventListener("message", handleYouTubeMessage);
   }, [playlist, currentVideo]); 
-  // -------------------------------------------------------------
 
   const handleRemoveVideo = async (videoIdToRemove: string) => {
     try {
@@ -216,13 +215,22 @@ export default function SinglePlaylistPage() {
           <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden">
             {currentVideoId ? (
               <iframe
+                ref={iframeRef}
                 key={currentVideoId}
                 className="w-full h-full"
-                // NEW: Added enablejsapi=1 so YouTube can send us messages about the video state
                 src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1`}
                 title="YouTube video player"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                onLoad={() => {
+                  // FIX: Added a slight delay so YouTube's internal script has time to load before we knock
+                  setTimeout(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({ event: "listening" }),
+                      "*"
+                    );
+                  }, 500); 
+                }}
               ></iframe>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">Video unavailable</div>
@@ -231,7 +239,8 @@ export default function SinglePlaylistPage() {
 
           {currentVideo && (
             <div className="space-y-4 px-3 overflow-hidden">
-              <h1 className="text-xl md:text-2xl font-bold wrap-break-word">{currentVideo.title}</h1>
+              {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
+              <h1 className="text-xl md:text-2xl font-bold break-words">{currentVideo.title}</h1>
 
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <p className="text-sm font-semibold text-foreground/80">
@@ -252,7 +261,8 @@ export default function SinglePlaylistPage() {
                 <p className="font-semibold mb-2">
                   {displayViews.toLocaleString()} views
                 </p>
-                <div className={`whitespace-pre-wrap wrap-break-word leading-relaxed ${showFullDesc ? "" : "line-clamp-3"}`}>
+                {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
+                <div className={`whitespace-pre-wrap break-words leading-relaxed ${showFullDesc ? "" : "line-clamp-3"}`}>
                   {displayDescription ? renderDescription(displayDescription) : "No description available."}
                 </div>
                 {displayDescription && (
@@ -327,7 +337,8 @@ export default function SinglePlaylistPage() {
                     </div>
 
                     <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
-                      <h3 className={`font-medium text-sm line-clamp-2 wrap-break-word ${isPlaying ? "text-primary" : ""}`}>
+                      {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
+                      <h3 className={`font-medium text-sm line-clamp-2 break-words ${isPlaying ? "text-primary" : ""}`}>
                         {video.title}
                       </h3>
                     </div>
