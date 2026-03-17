@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { getYouTubeVideoId } from "@/utils/helper";
 import { useUserStore } from "@/store/useUserStore";
 import Image from "next/image";
-import { PlaySquare, Plus, Trash2, RefreshCw } from "lucide-react";
+import { PlaySquare, Plus, Trash2, RefreshCw, Share2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { API_URL } from "@/utils/constants";
@@ -23,6 +23,7 @@ import Link from "next/link";
 import { Alert } from "@/components/others/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { sharePlaylist } from "@/lib/share-playlist";
 
 export default function PlaylistPage() {
   const { isAuth, loading: authLoading } = useAuth();
@@ -206,6 +207,18 @@ export default function PlaylistPage() {
                       </Button>
                     }
                   />
+                </div>
+
+                <div className="absolute top-2 right-12 z-10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="h-8 w-8 hover:text-sky-600 shadow-sm"
+                    title="Share entire playlist"
+                    onClick={() => sharePlaylist(playlist.channelTitle, playlistId)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 <Link href={`/playlist/${playlistId}`} className="block">

@@ -5,13 +5,9 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { Loader } from "@/components/ui/loader";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Play, ThumbsUp, MessageSquare, Trash2, CheckCircle, Share2 } from "lucide-react";
-import { Alert } from "@/components/others/alert";
-import { useUserStore } from "@/store/useUserStore";
-import { sharePlaylist } from "@/lib/share-playlist";
+import { Play, ThumbsUp, MessageSquare } from "lucide-react";
 
 interface IVideoExtended extends IVideo {
   watched?: boolean;
@@ -29,8 +25,6 @@ export default function SinglePlaylistPage() {
   const params = useParams();
   const videoId = useSearchParams().get("videoId");
   const router = useRouter();
-
-  const { user } = useUserStore();
 
   const [playlist, setPlaylist] = useState<IPlaylist | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,34 +99,6 @@ export default function SinglePlaylistPage() {
       } catch (error) {
         console.error("Failed to mark as watched");
       }
-    }
-  };
-
-  const handleRemoveVideo = async (videoIdToRemove: string) => {
-    try {
-      await axios.patch(`/api/playlists/${params.id}`, {
-        action: "REMOVE_VIDEO",
-        videoId: videoIdToRemove
-      });
-
-      setPlaylist(prev => {
-        if (!prev) return prev;
-        const newVideos = prev.videos.filter(v => (v.videoId || extractVideoId(v.thumbnail)) !== videoIdToRemove);
-        return { ...prev, videos: newVideos };
-      });
-      toast.success("Video removed");
-    } catch (error) {
-      toast.error("Failed to remove video");
-    }
-  };
-
-  const handleDeletePlaylist = async () => {
-    try {
-      await axios.delete(`/api/playlists/${params.id}`);
-      toast.success("Playlist deleted");
-      router.replace("/playlist");
-    } catch (error) {
-      toast.error("Failed to delete playlist");
     }
   };
 
@@ -230,31 +196,6 @@ export default function SinglePlaylistPage() {
 
         <div className="lg:w-[30%] flex flex-col max-h-[calc(100vh-20rem)] sm:max-h-[calc(100vh-5rem)] lg:min-w-75 p-2">
           <div className="border border-border rounded-xl flex flex-col h-full bg-card overflow-hidden">
-
-            <div className="p-4 bg-secondary/30 border-b border-border flex items-center justify-between shrink-0">
-              <div className="overflow-hidden">
-                <h2 className="text-lg font-bold line-clamp-1">{playlist.channelTitle} Playlist</h2>
-                <p className="text-xs text-muted-foreground">
-                  {playlist.videos.length} videos
-                </p>
-              </div>
-              <div>
-                <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, params.id as string)}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
-                <Alert
-                  title="Delete Playlist"
-                  description="Are you sure you want to delete this entire playlist? This action cannot be undone."
-                  onContinue={handleDeletePlaylist}
-                  trigger={
-                    <Button variant="outline" size="icon" title="Delete entire playlist" className="shrink-0 ml-2">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  }
-                />
-              </div>
-            </div>
-
             <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-2">
               {playlist.videos.map((video: IVideoExtended, idx) => {
                 const vidId = video.videoId || extractVideoId(video.thumbnail);
@@ -279,11 +220,6 @@ export default function SinglePlaylistPage() {
                           <Play className="h-6 w-6 text-white drop-shadow-md" fill="currentColor" />
                         </div>
                       )}
-                      {video.watched && !isPlaying && (
-                        <div className="absolute bottom-1 right-1">
-                          <CheckCircle className="h-4 w-4 text-green-500 bg-black/50 rounded-full" />
-                        </div>
-                      )}
                     </div>
 
                     <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
@@ -291,38 +227,12 @@ export default function SinglePlaylistPage() {
                         {video.title}
                       </h3>
                     </div>
-
-                    {/* Wrap the Alert in a div to strictly stop the click from bubbling up */}
-                    <div
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
-                    >
-                      <Alert
-                        title="Remove Video"
-                        description="Are you sure you want to remove this video from the playlist?"
-                        onContinue={() => handleRemoveVideo(vidId as string)}
-                        trigger={
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8 text-foreground shadow-sm"
-                            title="Remove video"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
