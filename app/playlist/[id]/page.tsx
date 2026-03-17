@@ -108,6 +108,45 @@ export default function SinglePlaylistPage() {
     }
   };
 
+  // --- NEW: Function to play the next video in the list ---
+  const playNextVideo = () => {
+    if (!playlist || !currentVideo) return;
+
+    const currentVidId = currentVideo.videoId || extractVideoId(currentVideo.thumbnail);
+    
+    const currentIndex = playlist.videos.findIndex((v) => {
+      const vId = v.videoId || extractVideoId(v.thumbnail);
+      return vId === currentVidId;
+    });
+
+    // If it's not the last video, play the next one
+    if (currentIndex !== -1 && currentIndex + 1 < playlist.videos.length) {
+      handleVideoSelect(playlist.videos[currentIndex + 1] as IVideoExtended);
+    }
+  };
+
+  // --- NEW: Event listener to detect when YouTube video ends ---
+  useEffect(() => {
+    const handleYouTubeMessage = (event: MessageEvent) => {
+      // Security check: ensure message is from YouTube
+      if (event.origin !== "https://www.youtube.com") return;
+
+      try {
+        const data = JSON.parse(event.data);
+        // playerState 0 means the video has officially ended
+        if (data.event === "infoDelivery" && data.info?.playerState === 0) {
+          playNextVideo();
+        }
+      } catch (e) {
+        // Ignore JSON parsing errors for unrelated messages
+      }
+    };
+
+    window.addEventListener("message", handleYouTubeMessage);
+    return () => window.removeEventListener("message", handleYouTubeMessage);
+  }, [playlist, currentVideo]); 
+  // -------------------------------------------------------------
+
   const handleRemoveVideo = async (videoIdToRemove: string) => {
     try {
       await axios.patch(`/api/playlists/${params.id}`, {
@@ -179,7 +218,8 @@ export default function SinglePlaylistPage() {
               <iframe
                 key={currentVideoId}
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
+                // NEW: Added enablejsapi=1 so YouTube can send us messages about the video state
+                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1`}
                 title="YouTube video player"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -292,7 +332,6 @@ export default function SinglePlaylistPage() {
                       </h3>
                     </div>
 
-                    {/* Wrap the Alert in a div to strictly stop the click from bubbling up */}
                     <div
                       onClick={(e) => {
                         e.preventDefault();
