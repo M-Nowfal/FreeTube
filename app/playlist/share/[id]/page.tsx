@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { Loader } from "@/components/ui/loader";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Play, ThumbsUp, MessageSquare } from "lucide-react";
+import { Play, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import { sharePlaylist } from "@/lib/share-playlist";
 
 interface IVideoExtended extends IVideo {
   watched?: boolean;
@@ -24,7 +26,6 @@ interface IVideoStats {
 export default function SinglePlaylistPage() {
   const params = useParams();
   const videoId = useSearchParams().get("videoId");
-  const router = useRouter();
 
   const [playlist, setPlaylist] = useState<IPlaylist | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,8 @@ export default function SinglePlaylistPage() {
   const [showFullDesc, setShowFullDesc] = useState(false);
 
   const [videoStats, setVideoStats] = useState<Record<string, IVideoStats>>({});
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const extractVideoId = (thumbnailUrl: string) => {
     try {
@@ -79,6 +82,9 @@ export default function SinglePlaylistPage() {
     setCurrentVideo(video);
     setShowFullDesc(false);
 
+    // Auto-scroll to top so user sees the new video playing
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
 
     if (!video.watched) {
@@ -101,6 +107,39 @@ export default function SinglePlaylistPage() {
       }
     }
   };
+
+  const playNextVideo = () => {
+    if (!playlist || !currentVideo) return;
+
+    const currentVidId = currentVideo.videoId || extractVideoId(currentVideo.thumbnail);
+
+    const currentIndex = playlist.videos.findIndex((v) => {
+      const vId = v.videoId || extractVideoId(v.thumbnail);
+      return vId === currentVidId;
+    });
+
+    if (currentIndex !== -1 && currentIndex + 1 < playlist.videos.length) {
+      handleVideoSelect(playlist.videos[currentIndex + 1] as IVideoExtended);
+    }
+  };
+
+  useEffect(() => {
+    const handleYouTubeMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://www.youtube.com") return;
+
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === "infoDelivery" && data.info?.playerState === 0) {
+          playNextVideo();
+        }
+      } catch (e) {
+        // Ignore JSON parsing errors
+      }
+    };
+
+    window.addEventListener("message", handleYouTubeMessage);
+    return () => window.removeEventListener("message", handleYouTubeMessage);
+  }, [playlist, currentVideo]);
 
   const renderDescription = (text: string) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -143,12 +182,21 @@ export default function SinglePlaylistPage() {
           <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden">
             {currentVideoId ? (
               <iframe
+                ref={iframeRef}
                 key={currentVideoId}
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
+                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1`}
                 title="YouTube video player"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                onLoad={() => {
+                  setTimeout(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({ event: "listening" }),
+                      "*"
+                    );
+                  }, 500);
+                }}
               ></iframe>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">Video unavailable</div>
@@ -196,6 +244,19 @@ export default function SinglePlaylistPage() {
 
         <div className="lg:w-[30%] flex flex-col max-h-[calc(100vh-20rem)] sm:max-h-[calc(100vh-5rem)] lg:min-w-75 p-2">
           <div className="border border-border rounded-xl flex flex-col h-full bg-card overflow-hidden">
+
+            <div className="p-4 bg-secondary/30 border-b border-border flex items-center justify-between shrink-0">
+              <div className="overflow-hidden">
+                <h2 className="text-lg font-bold line-clamp-1">{playlist.channelTitle} Playlist</h2>
+                <p className="text-xs text-muted-foreground">
+                  {playlist.videos.length} videos
+                </p>
+              </div>
+              <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, params.id as string)}>
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
+
             <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-2">
               {playlist.videos.map((video: IVideoExtended, idx) => {
                 const vidId = video.videoId || extractVideoId(video.thumbnail);

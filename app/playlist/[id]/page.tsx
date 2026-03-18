@@ -240,7 +240,7 @@ export default function SinglePlaylistPage() {
           {currentVideo && (
             <div className="space-y-4 px-3 overflow-hidden">
               {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
-              <h1 className="text-xl md:text-2xl font-bold break-words">{currentVideo.title}</h1>
+              <h1 className="text-xl md:text-2xl font-bold wrap-break-word">{currentVideo.title}</h1>
 
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <p className="text-sm font-semibold text-foreground/80">
@@ -262,7 +262,7 @@ export default function SinglePlaylistPage() {
                   {displayViews.toLocaleString()} views
                 </p>
                 {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
-                <div className={`whitespace-pre-wrap break-words leading-relaxed ${showFullDesc ? "" : "line-clamp-3"}`}>
+                <div className={`whitespace-pre-wrap wrap-break-word leading-relaxed ${showFullDesc ? "" : "line-clamp-3"}`}>
                   {displayDescription ? renderDescription(displayDescription) : "No description available."}
                 </div>
                 {displayDescription && (
@@ -338,7 +338,7 @@ export default function SinglePlaylistPage() {
 
                     <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
                       {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
-                      <h3 className={`font-medium text-sm line-clamp-2 break-words ${isPlaying ? "text-primary" : ""}`}>
+                      <h3 className={`font-medium text-sm line-clamp-2 wrap-break-word ${isPlaying ? "text-primary" : ""}`}>
                         {video.title}
                       </h3>
                     </div>
