@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, ExternalLink, UserPlus, UserMinus } from "lucide-react";
+import { Search, ExternalLink, UserPlus, UserMinus, RefreshCw } from "lucide-react";
+import axios from "axios";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +24,10 @@ import Link from "next/link";
 interface IChannel {
   channelId: string;
   title: string;
-  description?: string; // Made optional since DB subscriptions don't save description
+  description?: string;
   thumbnail: string;
+  totalVideos?: number;
+  watchedVideos?: number;
 }
 
 export default function SearchChannelsPage() {
@@ -35,6 +45,11 @@ export default function SearchChannelsPage() {
   const [fetchingSubs, setFetchingSubs] = useState(true);
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
   const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
+
+  // Sync state
+  const [timeframe, setTimeframe] = useState("1d");
+  const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -59,13 +74,43 @@ export default function SearchChannelsPage() {
       const res = await fetch(`/api/subscriptions?username=${user?.username}`);
       if (res.ok) {
         const data = await res.json();
-        setSubscribedChannels(data);
+        setSubscribedChannels(data.subscriptions || data);
+        if (data.lastSynced) {
+          setLastSynced(data.lastSynced);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch subscriptions", error);
     } finally {
       setFetchingSubs(false);
     }
+  };
+
+  const handleSync = async () => {
+    if (!user?.username) return toast.error("Please log in first");
+
+    setSyncing(true);
+    try {
+      await axios.post("/api/sync", {
+        username: user.username,
+        timeframe: timeframe
+      });
+      fetchSubscribedChannels();
+    } catch (error: unknown) {
+      toast.error("Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
   };
 
   const handleSearch = async (e?: React.FormEvent) => {
@@ -240,7 +285,34 @@ export default function SearchChannelsPage() {
 
       {/* Subscribed Channels Section */}
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight">Your Subscriptions</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold tracking-tight">Your Subscriptions</h2>
+            {lastSynced && (
+              <span className="text-xs text-muted-foreground mt-1">
+                (Last synced: {formatDate(lastSynced)})
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">Last 1 Hour</SelectItem>
+                <SelectItem value="1d">Last 1 Day</SelectItem>
+                <SelectItem value="1w">Last 1 Week</SelectItem>
+                <SelectItem value="1m">Last 1 Month</SelectItem>
+                <SelectItem value="1y">Last 1 Year</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+              {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Sync Subs
+            </Button>
+          </div>
+        </div>
 
         {fetchingSubs ? (
           <div className="flex justify-center py-10"><Loader size={40} /></div>
@@ -264,9 +336,15 @@ export default function SearchChannelsPage() {
                     <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
                       {channel.title}
                     </CardTitle>
-                    <CardDescription className="text-xs mt-1 text-muted-foreground">
-                      Subscribed Channel
-                    </CardDescription>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {channel.totalVideos || 0} videos
+                      </span>
+                      <span className="text-muted-foreground/50">|</span>
+                      <span className="text-xs text-muted-foreground">
+                        {channel.watchedVideos || 0} watched
+                      </span>
+                    </div>
                   </div>
                 </CardHeader>
 

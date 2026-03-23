@@ -17,7 +17,12 @@ export async function GET(
       return NextResponse.json({ message: "Playlist not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ playlist }, { status: 200 });
+    return NextResponse.json({ 
+      playlist: {
+        ...playlist.toObject(),
+        updatedAt: playlist.updatedAt?.toISOString()
+      }
+    }, { status: 200 });
   } catch (error: unknown) {
     console.error(error);
     return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });

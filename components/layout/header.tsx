@@ -48,7 +48,8 @@ export function Header(): JSX.Element {
     { href: "/playlist", icon: <ListVideo size={20} />, label: "PlayList" },
     { href: "/channels", icon: <PlaySquare size={20} />, label: "Subscription" },
     { href: "/watchlater", icon: <Bookmark size={20} />, label: "Watch Later" },
-    { href: "/search", icon: <Search size={20} />, label: "Search" }
+    { href: "/search", icon: <Search size={20} />, label: "Search" },
+    { href: "/settings", icon: <Settings size={20} />, label: "Settings" }
   ];
 
   return (

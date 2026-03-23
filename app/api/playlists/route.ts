@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Playlist } from "@/models/playlist.model"; // Adjust this path if necessary
+import { Playlist } from "@/models/playlist.model";
+import { User } from "@/models/user.model";
 import { connectDataBase } from "@/utils/connect-db";
 import { IVideo } from "@/types/playlist";
 
@@ -51,10 +52,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Username required" }, { status: 400 });
     }
 
-    // Fetch all playlists for the user
     const playlists = await Playlist.find({ username }).sort({ createdAt: -1 });
 
-    return NextResponse.json({ playlists }, { status: 200 });
+    const playlistsWithUpdatedAt = playlists.map(p => ({
+      ...p.toObject(),
+      updatedAt: p.updatedAt?.toISOString()
+    }));
+
+    const lastSynced = playlists.length > 0 
+      ? playlists.reduce((latest, p) => {
+          const pUpdated = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+          return pUpdated > latest ? pUpdated : latest;
+        }, 0)
+      : null;
+
+    return NextResponse.json({ 
+      playlists: playlistsWithUpdatedAt, 
+      lastSynced: lastSynced ? new Date(lastSynced).toISOString() : null 
+    }, { status: 200 });
   } catch (error: unknown) {
     console.error(error);
     return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });

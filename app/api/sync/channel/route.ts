@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { Playlist } from "@/models/playlist.model";
+import { User } from "@/models/user.model";
 import axios from "axios";
 import { YOUTUBE_API_KEY } from "@/utils/constants";
 

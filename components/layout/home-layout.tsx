@@ -19,7 +19,7 @@ export function HomeLayout({
   return (
     <SidebarProvider>
       <div className="min-h-screen flex flex-col w-full">
-        {(pathname !== "/auth/login" && pathname !== "/auth/signup") && <Header />}
+        {!pathname.startsWith("/auth") && <Header />}
         <div className="flex flex-1">
           <SideBar />
           <main className="flex-1 pb-12">

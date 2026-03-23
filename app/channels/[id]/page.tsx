@@ -58,6 +58,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const titleParam = searchParams.get("title") || "";
   
   const { user } = useUserStore();
+  const [playlistUpdatedAt, setPlaylistUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [channelInfo, setChannelInfo] = useState<IChannelInfo | null>(null);
   const [videos, setVideos] = useState<IVideo[]>([]);
@@ -86,6 +87,9 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       const data = await res.json();
       setChannelInfo(data.channelInfo);
       setVideos(data.videos);
+      if (data.playlistUpdatedAt) {
+        setPlaylistUpdatedAt(data.playlistUpdatedAt);
+      }
     } catch (error) {
       toast.error("Could not load channel videos");
     } finally {
@@ -199,7 +203,11 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
             <h1 className="text-2xl md:text-4xl font-bold tracking-tight wrap-break-word">
               {channelInfo.title}
             </h1>
-            <p className="text-muted-foreground text-sm mt-1">{videos.length} saved videos</p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-muted-foreground text-sm">{videos.length} videos</p>
+              <span className="text-muted-foreground/50">|</span>
+              <p className="text-muted-foreground text-sm">{videos.filter((v: IVideo) => v.watched).length} watched</p>
+            </div>
           </div>
         </div>
       )}
@@ -285,8 +293,15 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
           </>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 px-4 pb-4 border-b gap-4">
-          <h2 className="text-xl font-semibold">Videos</h2>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 px-4 pb-4 border-b gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <h2 className="text-xl font-semibold">Videos</h2>
+            {playlistUpdatedAt && (
+              <span className="text-xs text-muted-foreground">
+                Last synced: {new Date(playlistUpdatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+            )}
+          </div>
           
           <div className="flex flex-wrap items-center gap-4">
             
@@ -331,7 +346,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
         </div>
 
         {sortedVideos.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed rounded-xl text-muted-foreground mx-4">
+          <div className="text-center py-20 px-10 border-2 border-dashed rounded-xl text-muted-foreground mx-4">
             No videos synced for this channel yet. Use the sync button above to fetch recent videos.
           </div>
         ) : (

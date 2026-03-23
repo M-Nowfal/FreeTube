@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { User } from "@/models/user.model";
+import { Playlist } from "@/models/playlist.model";
 
 // Fetch user's subscriptions
 export async function GET(req: NextRequest) {
@@ -18,7 +19,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user.subscriptions || [], { status: 200 });
+    const subscriptions = user.subscriptions || [];
+
+    const playlists = await Playlist.find({ username });
+    const playlistMap = new Map<string, { totalVideos: number; watchedVideos: number }>();
+
+    for (const playlist of playlists) {
+      const totalVideos = playlist.videos?.length || 0;
+      const watchedVideos = playlist.videos?.filter((v: any) => v.watched).length || 0;
+      playlistMap.set(playlist.channelTitle.toLowerCase(), { totalVideos, watchedVideos });
+    }
+
+    const subscriptionsWithCounts = subscriptions.map((sub: any) => {
+      const counts = playlistMap.get(sub.title.toLowerCase()) || { totalVideos: 0, watchedVideos: 0 };
+      return {
+        ...sub.toObject ? sub.toObject() : sub,
+        totalVideos: counts.totalVideos,
+        watchedVideos: counts.watchedVideos,
+      };
+    });
+
+    const sortedPlaylists = await Playlist.find({ username }).sort({ updatedAt: -1 });
+    
+    const lastSynced = sortedPlaylists.length > 0 && sortedPlaylists[0].updatedAt
+      ? sortedPlaylists[0].updatedAt.toISOString()
+      : null;
+
+    return NextResponse.json({
+      subscriptions: subscriptionsWithCounts,
+      lastSynced
+    }, { status: 200 });
   } catch (error) {
     console.error("Fetch subscriptions error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

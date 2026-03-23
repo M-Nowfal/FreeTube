@@ -171,7 +171,7 @@ export default function WatchLaterPage() {
       {fetchingVideos ? (
         <div className="flex justify-center h-[60vh] items-center"><Loader size={50} /></div>
       ) : videos.length === 0 ? (
-        <div className="text-center p-12 text-muted-foreground border border-dashed rounded-lg">
+        <div className="text-center p-12 m-5 text-muted-foreground border border-dashed rounded-lg">
           Your Watch Later list is empty. Add a video to get started!
         </div>
       ) : (

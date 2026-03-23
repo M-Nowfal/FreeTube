@@ -29,9 +29,17 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
         { status: 401 }
       );
 
-    const id = decoded?.id;
+    const body = await req.json();
+    const { password } = body;
 
-    const user = await User.findById(id);
+    if (!password) {
+      return NextResponse.json(
+        { error: "Password is required to delete account" },
+        { status: 400 }
+      );
+    }
+
+    const user = await User.findById(decoded.id);
 
     if (!user) {
       return NextResponse.json(
@@ -40,7 +48,23 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    await User.findByIdAndDelete(id);
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "User does not have a password set" },
+        { status: 400 }
+      );
+    }
+
+    const isPasswordValid = await compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: "Incorrect password" },
+        { status: 401 }
+      );
+    }
+
+    await User.findByIdAndDelete(decoded.id);
     await Playlist.deleteMany({ username: user.username });
     await WatchLater.deleteMany({ username: user.username });
 

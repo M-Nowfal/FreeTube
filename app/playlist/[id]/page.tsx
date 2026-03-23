@@ -284,9 +284,22 @@ export default function SinglePlaylistPage() {
             <div className="p-4 bg-secondary/30 border-b border-border flex items-center justify-between shrink-0">
               <div className="overflow-hidden">
                 <h2 className="text-lg font-bold line-clamp-1">{playlist.channelTitle} Playlist</h2>
-                <p className="text-xs text-muted-foreground">
-                  {playlist.videos.length} videos
-                </p>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {playlist.videos.length} videos
+                    </p>
+                    <span className="text-muted-foreground/50">|</span>
+                    <p className="text-xs text-muted-foreground">
+                      {playlist.videos.filter((v: IVideo) => v.watched).length} watched
+                    </p>
+                  </div>
+                  {playlist.updatedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Last synced: {new Date(playlist.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  )}
+                </div>
               </div>
               <div>
                 <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, params.id as string)}>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useVideoUrlStore } from "@/store/useVideoUrlStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Play, X } from "lucide-react";
@@ -10,6 +12,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export default function Page() {
   const { videourl, setVideoUrl } = useVideoUrlStore();
   const [input, setInput] = useState<string>("");
+  const { isAuth, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && isAuth) {
+      const hasVisited = sessionStorage.getItem("hasVisitedPlaylist");
+      if (!hasVisited) {
+        sessionStorage.setItem("hasVisitedPlaylist", "true");
+        router.replace("/playlist");
+      }
+    }
+  }, [isAuth, authLoading, router]);
   return (
     <div className="w-[98%] m-auto mt-12 flex justify-center items-center h-[80vh]">
       <div className="w-full max-w-6xl grid gap-3 p-1 border rounded-lg">

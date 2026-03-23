@@ -35,6 +35,7 @@ export default function PlaylistPage() {
 
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -55,6 +56,9 @@ export default function PlaylistPage() {
     try {
       const { data } = await axios.get(`${API_URL}/playlists?username=${user?.username}`);
       setPlaylists(data.playlists);
+      if (data.lastSynced) {
+        setLastSynced(data.lastSynced);
+      }
     } catch (error) {
       toast.error("Failed to load playlists");
     } finally {
@@ -129,12 +133,29 @@ export default function PlaylistPage() {
     }
   };
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Your Playlists</h1>
-          <p className="text-muted-foreground mt-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Your Playlists</h1>
+            {lastSynced && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Last synced: {formatDate(lastSynced)}
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground text-sm">
             Manage your collections or sync latest videos from your subscriptions.
           </p>
         </div>
@@ -242,13 +263,18 @@ export default function PlaylistPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col">
-                      <h3 className="font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                        {playlist.channelTitle}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        View full playlist
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <h3 className="font-semibold line-clamp-1 group-hover:text-primary transition-colors">
+                          {playlist.channelTitle}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          View full playlist
+                        </p>
+                      </div>
+                      <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                        {playlist.videos.filter((v: IVideo) => v.watched).length} watched
+                      </div>
                     </div>
                   </div>
                 </Link>

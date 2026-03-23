@@ -12,9 +12,15 @@ const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!, 10);
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
 
+const SMTP_HOST = process.env.SMTP_HOST!;
+const SMTP_PORT = process.env.SMTP_PORT!;
+const SMTP_USER = process.env.SMTP_USER!;
+const SMTP_PASS = process.env.SMTP_PASS!;
+
 export {
   API_URL, DB_NAME, DB_URI,
   TOKEN_NAME, JWT_SECRET,
   JWT_EXPIRES_IN, NODE_ENV,
-  SALT_ROUNDS, YOUTUBE_API_KEY
+  SALT_ROUNDS, YOUTUBE_API_KEY,
+  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
 };

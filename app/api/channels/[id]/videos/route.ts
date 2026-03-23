@@ -31,9 +31,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     // 2. Fetch the playlist that matches this channel title
     const playlist = await Playlist.findOne({ username, channelTitle });
 
+    const playlistUpdatedAt = playlist?.updatedAt ? playlist.updatedAt.toISOString() : null;
+
     return NextResponse.json({
       channelInfo: subscription || { channelId: id, title: channelTitle },
-      videos: playlist ? playlist.videos : []
+      videos: playlist ? playlist.videos : [],
+      playlistUpdatedAt
     }, { status: 200 });
 
   } catch (error) {

@@ -10,7 +10,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     await connectDataBase();
 
-    const { username, password, confirmPassword } = await req.json();
+    const { username, email, password, confirmPassword } = await req.json();
+
+    if (!email) {
+      return NextResponse.json(
+        { message: "Email is required" },
+        { status: 400 }
+      );
+    }
 
     if (confirmPassword !== password) {
       return NextResponse.json(
@@ -25,10 +32,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: "User already exist" }, { status: 401 });
     }
 
+    const isExistingEmail = await User.findOne({ email });
+
+    if (isExistingEmail) {
+      return NextResponse.json({ message: "Email already in use" }, { status: 401 });
+    }
+
     const hashedPassword = await hash(password);
 
     const user = await User.create({
-      username, password: hashedPassword
+      username,
+      email,
+      password: hashedPassword
     });
 
     const token = generateToken({ id: user._id });

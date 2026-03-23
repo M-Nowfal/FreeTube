@@ -11,4 +11,5 @@ export interface IPlaylist {
   username: string;
   channelTitle: string;
   videos: IVideo[];
+  updatedAt?: string;
 }

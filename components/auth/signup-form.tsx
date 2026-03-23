@@ -21,6 +21,7 @@ import { Eye, EyeOff } from "lucide-react"; // Import icons for the toggle
 
 interface FormData {
   username: string;
+  email: string;
   password: string;
   confirmPassword: string;
 }
@@ -103,6 +104,28 @@ export function SignupForm({
             {errors.username && (
               <p className="text-xs text-red-500 mt-1">
                 {errors.username.message}
+              </p>
+            )}
+          </Field>
+
+          {/* Email */}
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              type="email"
+              placeholder="email@example.com"
+              {...register("email", {
+                required: "Email is required",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Please enter a valid email address",
+                },
+              })}
+            />
+            {errors.email && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.email.message}
               </p>
             )}
           </Field>

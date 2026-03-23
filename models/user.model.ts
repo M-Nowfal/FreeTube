@@ -8,8 +8,11 @@ export interface ISubscription {
 
 export interface IUser extends Document {
   username: string;
+  email?: string;
   password?: string;
   subscriptions: ISubscription[];
+  resetToken?: string;
+  resetTokenExpiry?: Date;
 }
 
 const SubscriptionSchema = new Schema<ISubscription>({
@@ -25,10 +28,22 @@ const UserSchema = new Schema<IUser>({
     required: true,
     unique: true
   },
+  email: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true
+  },
   password: {
     type: String,
   },
-  subscriptions: [SubscriptionSchema]
+  subscriptions: [SubscriptionSchema],
+  resetToken: {
+    type: String,
+  },
+  resetTokenExpiry: {
+    type: Date,
+  }
 });
 
 export const User = models.User || model<IUser>("User", UserSchema);

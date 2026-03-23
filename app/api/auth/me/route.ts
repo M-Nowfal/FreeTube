@@ -26,7 +26,7 @@ export async function GET(): Promise<NextResponse> {
         { status: 401 }
       );
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select("+lastSynced");
 
     if (!user) {
       const cookieStore = await cookies();
@@ -48,8 +48,17 @@ export async function GET(): Promise<NextResponse> {
       );
     }
 
+    const userObj = user.toObject();
+    const { lastSynced } = user;
+
     return NextResponse.json(
-      { message: "Authorized", user },
+      { 
+        message: "Authorized", 
+        user: {
+          ...userObj,
+          lastSynced: lastSynced ? lastSynced.toISOString() : null
+        }
+      },
       { status: 200 }
     );
   } catch (err: unknown) {

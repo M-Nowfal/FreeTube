@@ -26,7 +26,6 @@ import { useMutate } from "@/hooks/useMutate";
 import { useUserStore } from "@/store/useUserStore";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 export function SideBar(): JSX.Element {
@@ -52,16 +51,13 @@ export function SideBar(): JSX.Element {
     await mutate("/auth/logout");
   }
 
-  async function signout() {
-    await mutate("/auth/signout", undefined, undefined, "DELETE");
-  }
-
   const links = [
     { href: user ? "/" : "", icon: <Home />, label: "Home" },
     { href: user ? "/playlist" : "", icon: <ListVideo />, label: "PlayList" },
     { href: user ? "/channels" : "", icon: <PlaySquare />, label: "Subscriptions" },
     { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Watch Later" },
     { href: user ? "/search" : "", icon: <Search />, label: "Search" },
+    { href: user ? "/settings" : "", icon: <Settings />, label: "Settings" },
   ];
 
   return (
@@ -107,62 +103,21 @@ export function SideBar(): JSX.Element {
             <span>LogIn</span>
           </Link>
         ) : (
-          <>
-            <Alert
-              trigger={
-                <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
-                  <Button variant="secondary" size="icon">
-                    <LogOut />
-                  </Button>
-                  <span>Logout</span>
-                </div>
-              }
-              title="Confirm Logout"
-              description="Are you sure you want to log out? You&apos;ll need to sign in again to access your account."
-              onContinue={logout}
-              loading={loading}
-            />
-            <Alert
-              trigger={
-                <div className="flex items-center text-red-500 gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
-                  <Button variant="secondary" className="text-red-600" size="icon">
-                    <LogOut />
-                  </Button>
-                  <span>Sign-Out</span>
-                </div>
-              }
-              title="Confirm Logout"
-              description="Are you sure you want to sign out? All you data will be permanently deleted. This action can't be undone."
-              onContinue={signout}
-              loading={loading}
-            />
-          </>
-        )}
-        <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild className="w-full">
-              <div className="flex items-center gap-3">
-                <Button variant="secondary" size="icon">
-                  <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-                  <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-                  <span className="sr-only">Toggle theme</span>
+          <Alert
+            trigger={
+              <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent transition-all">
+                <Button variant="secondary" className="text-destructive" size="icon">
+                  <LogOut />
                 </Button>
-                <span className="capitalize" suppressHydrationWarning>{theme}</span>
+                <span className="text-destructive">Logout</span>
               </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            }
+            title="Confirm Logout"
+            description="Are you sure you want to log out? You&apos;ll need to sign in again to access your account."
+            onContinue={logout}
+            loading={loading}
+          />
+        )}
       </SidebarFooter>
     </Sidebar>
   );
