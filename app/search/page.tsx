@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader } from "@/components/ui/loader";
+import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import Image from "next/image";
 import Link from "next/link";
 import { PlaySquare, Search } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { IVideo } from "@/types/playlist";
@@ -20,18 +20,23 @@ interface IFlatVideo extends IVideo {
 }
 
 export default function SearchPage() {
-  const { isAuth, loading: authLoading } = useAuth();
+  const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const { cache, loading, fetchPlaylists } = usePlaylistStore();
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
   useEffect(() => {
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authInitialized) return;
     if (!isAuth && !authLoading) {
       toast.info("Login to access channels.");
       router.replace("/auth/login");
       return;
     }
-  }, [authLoading, isAuth, router]);
+  }, [authInitialized, authLoading, isAuth, router]);
 
   useEffect(() => {
     if (!cache && !loading) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
@@ -21,13 +21,11 @@ import axios, { AxiosError } from "axios";
 import { IVideo } from "@/types/playlist";
 import Link from "next/link";
 import { Alert } from "@/components/others/alert";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { sharePlaylist } from "@/lib/share-playlist";
 
 export default function PlaylistPage() {
-  const { isAuth, loading: authLoading } = useAuth();
-  const { user } = useUserStore();
+  const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const { cache, loading, fetchPlaylists, addNewPlaylist, deletePlaylist, invalidate } = usePlaylistStore();
   const [url, setUrl] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -48,7 +46,17 @@ export default function PlaylistPage() {
     return false;
   };
 
-  if (handleAuthRedirect()) return null;
+  useEffect(() => {
+    initAuth();
+  }, []);
+
+  if (!authInitialized) return null;
+
+  if (!isAuth && !authLoading) {
+    toast.info("Login to access channels.");
+    router.replace("/auth/login");
+    return null;
+  }
 
   if (!cache && !loading && user?.username) {
     fetchPlaylists(user.username);

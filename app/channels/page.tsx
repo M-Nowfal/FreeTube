@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
@@ -33,8 +32,7 @@ interface IChannel {
 }
 
 export default function SearchChannelsPage() {
-  const { isAuth, loading: authLoading } = useAuth();
-  const { user } = useUserStore();
+  const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const { channels: subscribedChannels, loading: fetchingSubs, fetchSubscriptions, addChannel, removeChannel, lastSynced } = useSubscriptionsStore();
   const { invalidateAll: invalidateChannelCache } = useChannelStore();
 
@@ -52,12 +50,17 @@ export default function SearchChannelsPage() {
   const router = useRouter();
 
   useEffect(() => {
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authInitialized) return;
     if (!isAuth && !authLoading) {
       toast.info("Login to access channels.");
       router.replace("/auth/login");
       return;
     }
-  }, [authLoading, isAuth, router]);
+  }, [authInitialized, authLoading, isAuth, router]);
 
   useEffect(() => {
     if (user?.username && subscribedChannels.length === 0 && !fetchingSubs) {

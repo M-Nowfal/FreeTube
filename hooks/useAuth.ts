@@ -1,40 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { useUserStore } from "@/store/useUserStore";
-import { API_URL } from "@/utils/constants";
-import axios from "axios";
-import { useEffect, useState } from "react";
 
-type UseAuth = {
-  isAuth: boolean;
-  loading: boolean;
-  setIsAuth: (auth: boolean) => void;
-};
-
-export function useAuth(): UseAuth {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isAuth, setIsAuth] = useState<boolean>(false);
-  const { setUser } = useUserStore();
-
-  async function getCurrentUser(): Promise<void> {
-    const response = await axios.get(
-      `${API_URL}/auth/me`,
-      { withCredentials: true }
-    );
-    if (response.status === 200) {
-      setIsAuth(true);
-      setUser(response.data?.user);
-    } else
-      setIsAuth(false);
-  }
+export function useAuth() {
+  const { isAuth, authLoading, initAuth, user } = useUserStore();
 
   useEffect(() => {
-    if (isAuth) return;
-    setLoading(true);
-    getCurrentUser()
-      .catch(() => setIsAuth(false))
-      .finally(() => setLoading(false));
+    initAuth();
   }, []);
 
-  return { isAuth, loading, setIsAuth };
+  return { isAuth, loading: authLoading, user };
 }
