@@ -18,6 +18,8 @@ import { Loader } from "@/components/ui/loader";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
+import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
+import { useChannelStore } from "@/store/useChannelStore";
 import { AxiosError } from "axios";
 import Link from "next/link";
 
@@ -33,23 +35,19 @@ interface IChannel {
 export default function SearchChannelsPage() {
   const { isAuth, loading: authLoading } = useAuth();
   const { user } = useUserStore();
+  const { channels: subscribedChannels, loading: fetchingSubs, fetchSubscriptions, addChannel, removeChannel, lastSynced } = useSubscriptionsStore();
+  const { invalidateAll: invalidateChannelCache } = useChannelStore();
 
-  // Search state
   const [query, setQuery] = useState("");
-  const [channels, setChannels] = useState<IChannel[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<IChannel[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Subscriptions state
-  const [subscribedChannels, setSubscribedChannels] = useState<IChannel[]>([]);
-  const [fetchingSubs, setFetchingSubs] = useState(true);
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
   const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
 
-  // Sync state
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -61,30 +59,11 @@ export default function SearchChannelsPage() {
     }
   }, [authLoading, isAuth, router]);
 
-  // Fetch subscribed channels on mount
   useEffect(() => {
-    if (user?.username) {
-      fetchSubscribedChannels();
+    if (user?.username && subscribedChannels.length === 0 && !fetchingSubs) {
+      fetchSubscriptions(user.username);
     }
   }, [user]);
-
-  const fetchSubscribedChannels = async () => {
-    setFetchingSubs(true);
-    try {
-      const res = await fetch(`/api/subscriptions?username=${user?.username}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSubscribedChannels(data.subscriptions || data);
-        if (data.lastSynced) {
-          setLastSynced(data.lastSynced);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch subscriptions", error);
-    } finally {
-      setFetchingSubs(false);
-    }
-  };
 
   const handleSync = async () => {
     if (!user?.username) return toast.error("Please log in first");
@@ -95,7 +74,8 @@ export default function SearchChannelsPage() {
         username: user.username,
         timeframe: timeframe
       });
-      fetchSubscribedChannels();
+      invalidateChannelCache();
+      fetchSubscriptions(user.username);
     } catch (error: unknown) {
       toast.error("Sync failed");
     } finally {
@@ -103,7 +83,7 @@ export default function SearchChannelsPage() {
     }
   };
 
-  const formatDate = (dateStr?: string) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-GB", {
@@ -117,7 +97,7 @@ export default function SearchChannelsPage() {
     if (e) e.preventDefault();
     if (!query.trim()) return;
 
-    setLoading(true);
+    setSearchLoading(true);
     setHasSearched(true);
 
     try {
@@ -125,11 +105,11 @@ export default function SearchChannelsPage() {
       if (!res.ok) throw new Error("Failed to fetch channels");
 
       const data = await res.json();
-      setChannels(data);
+      setSearchResults(data);
     } catch (error) {
       toast.error("Error fetching channels");
     } finally {
-      setLoading(false);
+      setSearchLoading(false);
     }
   };
 
@@ -153,7 +133,7 @@ export default function SearchChannelsPage() {
       if (!res.ok) throw new Error("Failed to subscribe");
 
       toast.success(`Subscribed to ${channel.title}`);
-      fetchSubscribedChannels(); // Refresh the subscriptions list
+      addChannel(channel);
     } catch (err: unknown) {
       if (err instanceof AxiosError && err.response?.status === 409) {
         toast.error(err.response.data.message);
@@ -182,8 +162,7 @@ export default function SearchChannelsPage() {
       if (!res.ok) throw new Error("Failed to unsubscribe");
 
       toast.success(`Unsubscribed from ${channelTitle}`);
-      // Optimistically remove it from the UI
-      setSubscribedChannels((prev) => prev.filter((c) => c.channelId !== channelId));
+      removeChannel(channelId);
     } catch (error) {
       toast.error("Error unsubscribing");
     } finally {
@@ -198,7 +177,6 @@ export default function SearchChannelsPage() {
   return (
     <div className="container mx-auto p-4 space-y-12">
 
-      {/* Search Section */}
       <div className="max-w-2xl mx-auto text-start mt-4">
         <h1 className="text-3xl font-bold mb-4">Discover Channels</h1>
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -209,23 +187,22 @@ export default function SearchChannelsPage() {
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 text-lg py-6"
           />
-          <Button type="submit" size="lg" disabled={loading || !query.trim()} className="h-auto">
-            {loading ? <Loader /> : <Search className="h-5 w-5 mr-2" />}
-            {loading ? "Searching" : "Search"}
+          <Button type="submit" size="lg" disabled={searchLoading || !query.trim()} className="h-auto">
+            {searchLoading ? <Loader /> : <Search className="h-5 w-5 mr-2" />}
+            {searchLoading ? "Searching" : "Search"}
           </Button>
         </form>
       </div>
 
-      {/* Search Results */}
-      {loading ? (
+      {searchLoading ? (
         <div className="flex justify-center py-20">
           <Loader size={50} />
         </div>
-      ) : channels.length > 0 ? (
+      ) : searchResults.length > 0 ? (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Search Results</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {channels.map((channel) => (
+            {searchResults.map((channel) => (
               <Card
                 key={channel.channelId}
                 className="flex flex-col group overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-300 bg-card/50 hover:bg-card"
@@ -274,16 +251,14 @@ export default function SearchChannelsPage() {
         </div>
       ) : null}
 
-      {hasSearched && !loading && channels.length === 0 && (
+      {hasSearched && !searchLoading && searchResults.length === 0 && (
         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
           No channels found for "{query}"
         </div>
       )}
 
-      {/* Divider */}
       <div className="w-full h-px bg-border my-8"></div>
 
-      {/* Subscribed Channels Section */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -318,7 +293,7 @@ export default function SearchChannelsPage() {
           <div className="flex justify-center py-10"><Loader size={40} /></div>
         ) : subscribedChannels.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground border border-dashed rounded-lg">
-            You haven't subscribed to any channels yet.
+            You haven&apos;t subscribed to any channels yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -348,7 +323,6 @@ export default function SearchChannelsPage() {
                   </div>
                 </CardHeader>
 
-                {/* Added e.stopPropagation() here to prevent card click when clicking buttons */}
                 <CardContent
                   className="flex justify-end gap-2.5 pt-3 mt-auto"
                   onClick={(e) => e.stopPropagation()}

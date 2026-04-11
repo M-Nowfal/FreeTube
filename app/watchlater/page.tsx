@@ -7,6 +7,7 @@ import { Loader } from "@/components/ui/loader";
 import { toast } from "sonner";
 import { getYouTubeVideoId } from "@/utils/helper";
 import { useUserStore } from "@/store/useUserStore";
+import { useWatchLaterStore } from "@/store/useWatchLaterStore";
 import Image from "next/image";
 import { PlaySquare, Plus, Trash2, CheckCircle, X, Play } from "lucide-react";
 import axios, { AxiosError } from "axios";
@@ -26,13 +27,11 @@ interface IWatchLaterVideo {
 export default function WatchLaterPage() {
   const { isAuth, loading: authLoading } = useAuth();
   const { user } = useUserStore();
+  const { videos, loading, fetchVideos, addVideo, removeVideo, markWatched, invalidate } = useWatchLaterStore();
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [videos, setVideos] = useState<IWatchLaterVideo[]>([]);
-  const [fetchingVideos, setFetchingVideos] = useState(true);
+  const [addLoading, setAddLoading] = useState(false);
   const router = useRouter();
 
-  // State to handle inline video playing
   const [playingVideo, setPlayingVideo] = useState<IWatchLaterVideo | null>(null);
 
   useEffect(() => {
@@ -44,31 +43,21 @@ export default function WatchLaterPage() {
   }, [authLoading, isAuth, router]);
 
   useEffect(() => {
-    if (user?.username) fetchVideos();
-  }, [user]);
-
-  const fetchVideos = async () => {
-    try {
-      const { data } = await axios.get(`/api/watch-later?username=${user?.username}`);
-      setVideos(data.videos);
-    } catch (error) {
-      toast.error("Failed to load Watch Later videos");
-    } finally {
-      setFetchingVideos(false);
+    if (user?.username && videos.length === 0 && !loading) {
+      fetchVideos(user.username);
     }
-  };
+  }, [user]);
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return toast.error("Please enter a YouTube URL");
     if (!user?.username) return toast.error("Please log in first");
 
-    setLoading(true);
+    setAddLoading(true);
     try {
       const videoId = getYouTubeVideoId(url);
       if (!videoId) throw new Error("Invalid YouTube URL");
 
-      // Fetch details from your existing YouTube route
       const { data: ytData } = await axios.get(`/api/youtube/${videoId}`);
       const details = ytData.video_details;
 
@@ -82,24 +71,23 @@ export default function WatchLaterPage() {
 
       const { data } = await axios.post("/api/watch-later", payload);
 
-      setVideos([data.video, ...videos]); // Add to top of list
+      addVideo(data.video);
       toast.success("Added to Watch Later!");
       setUrl("");
     } catch (error: unknown) {
       toast.error(error instanceof AxiosError ? error.response?.data?.message : "Failed to add video");
     } finally {
-      setLoading(false);
+      setAddLoading(false);
     }
   };
 
   const handlePlayVideo = async (video: IWatchLaterVideo) => {
     setPlayingVideo(video);
 
-    // Mark as watched in DB if it isn't already
     if (!video.watched) {
       try {
         await axios.patch(`/api/watch-later/${video._id}`);
-        setVideos(prev => prev.map(v => v._id === video._id ? { ...v, watched: true } : v));
+        markWatched(video._id);
       } catch (error) {
         console.error("Failed to mark as watched");
       }
@@ -109,8 +97,8 @@ export default function WatchLaterPage() {
   const handleRemoveVideo = async (id: string) => {
     try {
       await axios.delete(`/api/watch-later/${id}`);
-      setVideos(prev => prev.filter(v => v._id !== id));
-      if (playingVideo?._id === id) setPlayingVideo(null); // Close player if deleting currently playing video
+      removeVideo(id);
+      if (playingVideo?._id === id) setPlayingVideo(null);
       toast.success("Removed from Watch Later");
     } catch (error) {
       toast.error("Failed to remove video");
@@ -119,8 +107,6 @@ export default function WatchLaterPage() {
 
   return (
     <div className="container mx-auto sm:p-6 max-w-7xl space-y-8">
-
-      {/* Header & Input */}
       <div className="space-y-4 py-4">
         <h1 className="text-3xl font-bold tracking-tight px-4">Watch Later</h1>
         <p className="text-muted-foreground px-4">Save Watch Later videos here to watch them when you have time.</p>
@@ -131,19 +117,18 @@ export default function WatchLaterPage() {
               placeholder="Paste YouTube Video URL here..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              disabled={loading}
+              disabled={addLoading}
               className="pe-8"
             />
             {url && <X className="absolute top-1.5 right-1.5" onClick={() => setUrl("")} />}
           </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? <Loader className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          <Button type="submit" disabled={addLoading}>
+            {addLoading ? <Loader className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             Add
           </Button>
         </form>
       </div>
 
-      {/* Inline Video Player (Shows when a video is clicked) */}
       {playingVideo && (
         <div className="sticky top-0 z-20 sm:relative w-full max-w-5xl mx-auto bg-black rounded-xl shadow-lg mt-8">
           <div className="absolute top-1 right-1 z-10 bg-primary/80 rounded-full">
@@ -167,8 +152,7 @@ export default function WatchLaterPage() {
         </div>
       )}
 
-      {/* Videos Grid */}
-      {fetchingVideos ? (
+      {loading ? (
         <div className="flex justify-center h-[60vh] items-center"><Loader size={50} /></div>
       ) : videos.length === 0 ? (
         <div className="text-center p-12 m-5 text-muted-foreground border border-dashed rounded-lg">
@@ -178,8 +162,6 @@ export default function WatchLaterPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
           {videos.map((video) => (
             <div key={video._id} className="group relative flex flex-col gap-3">
-
-              {/* Delete Button */}
               <div className="absolute top-2 right-2 z-10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                 <Alert
                   title="Remove Video"
@@ -193,7 +175,6 @@ export default function WatchLaterPage() {
                 />
               </div>
 
-              {/* Thumbnail Container (Clickable) */}
               <div
                 className="relative aspect-video rounded-xl overflow-hidden bg-muted cursor-pointer"
                 onClick={() => handlePlayVideo(video)}
@@ -211,7 +192,6 @@ export default function WatchLaterPage() {
                   </div>
                 )}
 
-                {/* Watched Badge */}
                 {video.watched && (
                   <div className="absolute bottom-2 right-2 bg-black/80 text-green-400 text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1.5 backdrop-blur-sm border border-green-500/20">
                     <CheckCircle className="h-3 w-3" />
@@ -219,13 +199,11 @@ export default function WatchLaterPage() {
                   </div>
                 )}
 
-                {/* Play Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <Play className="h-10 w-10 drop-shadow-md text-white" fill="currentColor" />
                 </div>
               </div>
 
-              {/* Info */}
               <div className="flex flex-col pr-2">
                 <h3
                   className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-primary transition-colors wrap-break-word"
@@ -237,7 +215,6 @@ export default function WatchLaterPage() {
                   {video.channelTitle}
                 </p>
               </div>
-
             </div>
           ))}
         </div>

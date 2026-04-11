@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
@@ -14,11 +14,11 @@ import {
 import { toast } from "sonner";
 import { getYouTubeVideoId } from "@/utils/helper";
 import { useUserStore } from "@/store/useUserStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
 import Image from "next/image";
 import { PlaySquare, Plus, Trash2, RefreshCw, Share2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
-import { IPlaylist, IVideo } from "@/types/playlist";
-import { API_URL } from "@/utils/constants";
+import { IVideo } from "@/types/playlist";
 import Link from "next/link";
 import { Alert } from "@/components/others/alert";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,50 +28,38 @@ import { sharePlaylist } from "@/lib/share-playlist";
 export default function PlaylistPage() {
   const { isAuth, loading: authLoading } = useAuth();
   const { user } = useUserStore();
+  const { cache, loading, fetchPlaylists, addNewPlaylist, deletePlaylist, invalidate } = usePlaylistStore();
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [playlists, setPlaylists] = useState<IPlaylist[]>([]);
-  const [fetchingPlaylists, setFetchingPlaylists] = useState(true);
+  const [addLoading, setAddLoading] = useState(false);
 
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
+  const playlists = cache?.playlists || [];
+  const lastSynced = cache?.lastSynced || null;
+
+  const handleAuthRedirect = () => {
     if (!isAuth && !authLoading) {
       toast.info("Login to access channels.");
       router.replace("/auth/login");
-      return;
+      return true;
     }
-  }, [authLoading, isAuth, router]);
-
-  useEffect(() => {
-    if (user?.username) {
-      fetchPlaylists();
-    }
-  }, [user]);
-
-  const fetchPlaylists = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/playlists?username=${user?.username}`);
-      setPlaylists(data.playlists);
-      if (data.lastSynced) {
-        setLastSynced(data.lastSynced);
-      }
-    } catch (error) {
-      toast.error("Failed to load playlists");
-    } finally {
-      setFetchingPlaylists(false);
-    }
+    return false;
   };
+
+  if (handleAuthRedirect()) return null;
+
+  if (!cache && !loading && user?.username) {
+    fetchPlaylists(user.username);
+  }
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return toast.error("Please enter a YouTube URL");
     if (!user?.username) return toast.error("Please log in first");
 
-    setLoading(true);
+    setAddLoading(true);
     try {
       const videoId = getYouTubeVideoId(url);
       if (!videoId) throw new Error("Invalid YouTube URL");
@@ -87,28 +75,26 @@ export default function PlaylistPage() {
         publishedAt: details.publishedAt || new Date().toISOString()
       };
 
-      await axios.post("/api/playlists", {
+      const { data } = await axios.post("/api/playlists", {
         username: user.username,
         channelTitle: details.channelTitle,
         video: newVideo,
       });
 
+      addNewPlaylist(data.playlist);
       toast.success("Video added to playlist!");
       setUrl("");
-      fetchPlaylists();
     } catch (error: unknown) {
       toast.error(error instanceof AxiosError ? error.response?.data.message : "Failed to add video");
     } finally {
-      setLoading(false);
+      setAddLoading(false);
     }
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
     try {
       await axios.delete(`/api/playlists/${playlistId}`);
-      setPlaylists((prev) =>
-        prev.filter((p) => (p as IPlaylist & { _id: string })._id !== playlistId)
-      );
+      deletePlaylist(playlistId);
       toast.success("Playlist deleted successfully");
     } catch (error) {
       toast.error("Failed to delete playlist");
@@ -125,7 +111,7 @@ export default function PlaylistPage() {
         timeframe: timeframe
       });
       toast.success(data.message);
-      fetchPlaylists();
+      fetchPlaylists(user.username);
     } catch (error: unknown) {
       toast.error(error instanceof AxiosError ? error.response?.data?.message || "Sync failed" : "Sync failed");
     } finally {
@@ -133,7 +119,7 @@ export default function PlaylistPage() {
     }
   };
 
-  const formatDate = (dateStr?: string) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-GB", {
@@ -167,10 +153,10 @@ export default function PlaylistPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="flex-1"
-              disabled={loading || syncing}
+              disabled={addLoading || syncing}
             />
-            <Button type="submit" disabled={loading || syncing}>
-              {loading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+            <Button type="submit" disabled={addLoading || syncing}>
+              {addLoading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
               Add URL
             </Button>
           </form>
@@ -178,7 +164,7 @@ export default function PlaylistPage() {
           <div className="hidden md:block w-px bg-border my-2"></div>
 
           <div className="flex gap-3 items-center">
-            <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing || loading}>
+            <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing || addLoading}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Timeframe" />
               </SelectTrigger>
@@ -190,7 +176,7 @@ export default function PlaylistPage() {
                 <SelectItem value="1y">Last 1 Year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="secondary" onClick={handleSync} disabled={syncing || loading}>
+            <Button variant="secondary" onClick={handleSync} disabled={syncing || addLoading}>
               {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Sync Subs
             </Button>
@@ -198,7 +184,7 @@ export default function PlaylistPage() {
         </div>
       </div>
 
-      {fetchingPlaylists ? (
+      {loading ? (
         <div className="flex justify-center h-[50vh] items-center p-12"><Loader size={50} /></div>
       ) : playlists.length === 0 ? (
         <div className="text-center p-12 text-muted-foreground border border-dashed rounded-lg">
@@ -208,7 +194,7 @@ export default function PlaylistPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {playlists.map((playlist, idx) => {
             const latestVideo = playlist.videos[playlist.videos.length - 1];
-            const playlistId = (playlist as any)._id;
+            const playlistId = playlist._id;
 
             return (
               <div key={idx} className="group relative">

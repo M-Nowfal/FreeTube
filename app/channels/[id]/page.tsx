@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use, useMemo } from "react";
 import { useUserStore } from "@/store/useUserStore";
+import { useChannelStore } from "@/store/useChannelStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X } from "lucide-react";
@@ -27,7 +28,6 @@ interface IVideoDetails {
   publishedAt: string;
 }
 
-// Helper function to turn plain text URLs into clickable links
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -35,14 +35,13 @@ const renderTextWithLinks = (text: string) => {
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
       return (
-        <a 
-          key={index} 
-          href={part} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          // FIXED: Used standard Tailwind 'break-all' so long links wrap safely
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-blue-500 hover:underline break-all"
-          onClick={(e) => e.stopPropagation()} 
+          onClick={(e) => e.stopPropagation()}
         >
           {part}
         </a>
@@ -56,50 +55,48 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const searchParams = useSearchParams();
   const titleParam = searchParams.get("title") || "";
-  
+
   const { user } = useUserStore();
+  const { cache, loading, fetchChannel, getChannelData, updateChannelVideos, invalidate } = useChannelStore();
+
   const [playlistUpdatedAt, setPlaylistUpdatedAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [channelInfo, setChannelInfo] = useState<IChannelInfo | null>(null);
   const [videos, setVideos] = useState<IVideo[]>([]);
   const [sortBy, setSortBy] = useState("latest");
-  
+
   const [activeVideo, setActiveVideo] = useState<IVideo | null>(null);
   const [activeVideoDetails, setActiveVideoDetails] = useState<IVideoDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // Sync states
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    if (user?.username) {
-      fetchChannelData();
-    }
-  }, [user?.username, id]);
-
-  const fetchChannelData = async () => {
-    try {
-      const res = await fetch(`/api/channels/${id}/videos?username=${user?.username}&title=${encodeURIComponent(titleParam)}`);
-      if (!res.ok) throw new Error("Failed to load channel data");
-      
-      const data = await res.json();
-      setChannelInfo(data.channelInfo);
-      setVideos(data.videos);
-      if (data.playlistUpdatedAt) {
-        setPlaylistUpdatedAt(data.playlistUpdatedAt);
+    if (user?.username && id) {
+      const cached = getChannelData(id);
+      if (cached) {
+        setChannelInfo(cached.channelInfo);
+        setVideos(cached.videos);
+        setPlaylistUpdatedAt(cached.playlistUpdatedAt);
+      } else {
+        fetchChannel(id, user.username, titleParam);
       }
-    } catch (error) {
-      toast.error("Could not load channel videos");
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [user?.username, id, titleParam]);
+
+  useEffect(() => {
+    if (cache[id]) {
+      const cached = cache[id];
+      setChannelInfo(cached.channelInfo);
+      setVideos(cached.videos);
+      setPlaylistUpdatedAt(cached.playlistUpdatedAt);
+    }
+  }, [cache[id]]);
 
   const handleSync = async () => {
     if (!user?.username || !channelInfo) return toast.error("Please log in first");
-    
+
     setSyncing(true);
     try {
       const res = await fetch("/api/sync/channel", {
@@ -114,11 +111,12 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       });
 
       const data = await res.json();
-      
+
       if (!res.ok) throw new Error(data.message || "Sync failed");
-      
+
       toast.success(data.message);
-      fetchChannelData(); // Refresh the list with newly added videos
+      invalidate(id);
+      fetchChannel(id, user.username, titleParam);
     } catch (error: any) {
       toast.error(error.message || "Sync failed");
     } finally {
@@ -131,25 +129,27 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
     setActiveVideoDetails(null);
     setIsDescriptionExpanded(false);
     setLoadingDetails(true);
-    
+
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    setVideos((prev) => 
+    setVideos((prev) =>
       prev.map((v) => v.videoId === video.videoId ? { ...v, watched: true } : v)
     );
 
-    try {
-      await fetch("/api/videos/watch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: user?.username,
-          channelTitle: channelInfo?.title,
-          videoId: video.videoId
-        })
-      });
-    } catch (error) {
-      console.error("Failed to sync watched status");
+    if (channelInfo) {
+      try {
+        await fetch("/api/videos/watch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: user?.username,
+            channelTitle: channelInfo.title,
+            videoId: video.videoId
+          })
+        });
+      } catch (error) {
+        console.error("Failed to sync watched status");
+      }
     }
 
     try {
@@ -178,7 +178,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
     });
   }, [videos, sortBy]);
 
-  if (loading) {
+  if (loading && !channelInfo) {
     return <div className="flex h-screen items-center justify-center"><Loader size={50} /></div>;
   }
 
@@ -213,7 +213,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       )}
 
       <div className="md:px-12 lg:mt-8">
-        
+
         {activeVideo && (
           <>
             <div className="sticky top-0 z-50 md:relative md:z-auto w-full max-w-5xl mx-auto md:mx-auto md:px-0 bg-background md:bg-transparent shadow-2xl md:shadow-none">
@@ -240,7 +240,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
             <div className="mb-12 w-full max-w-5xl mx-auto p-4 md:p-6 bg-card border-x-0 md:border-x border-b md:rounded-b-2xl shadow-sm overflow-hidden">
               <h2 className="text-xl md:text-2xl font-bold mb-4 wrap-break-word">{activeVideo.title}</h2>
-              
+
               {loadingDetails ? (
                 <div className="flex items-center gap-2 text-muted-foreground py-4">
                   <Loader size={20} /> Loading video details...
@@ -258,7 +258,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                       <MessageSquare className="w-4 h-4" /> {activeVideoDetails.commentsCount?.toLocaleString()}
                     </div>
                     <span className="text-muted-foreground ml-2">
-                      {new Date(activeVideoDetails.publishedAt).toLocaleDateString(undefined, { 
+                      {new Date(activeVideoDetails.publishedAt).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'long', day: 'numeric'
                       })}
                     </span>
@@ -266,14 +266,14 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
                   <div className="bg-muted/40 p-4 rounded-xl relative overflow-hidden">
                     <div className={`text-sm whitespace-pre-wrap wrap-break-word ${!isDescriptionExpanded ? "line-clamp-3" : ""}`}>
-                      {activeVideoDetails.description 
-                        ? renderTextWithLinks(activeVideoDetails.description) 
+                      {activeVideoDetails.description
+                        ? renderTextWithLinks(activeVideoDetails.description)
                         : "No description available."}
                     </div>
                     {activeVideoDetails.description && activeVideoDetails.description.length > 150 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="mt-2 h-8 text-xs font-semibold"
                         onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                       >
@@ -302,10 +302,8 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
               </span>
             )}
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-4">
-            
-            {/* Sync Controls */}
             <div className="flex items-center gap-2">
               <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing || loading}>
                 <SelectTrigger className="w-32.5 h-9">
@@ -327,7 +325,6 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
             <div className="w-px h-6 bg-border hidden sm:block"></div>
 
-            {/* Sorting Controls */}
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -341,7 +338,6 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                 </SelectContent>
               </Select>
             </div>
-
           </div>
         </div>
 
@@ -366,7 +362,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                       <PlaySquare className="h-8 w-8 text-muted-foreground" />
                     </div>
                   )}
-                  
+
                   {video.watched && (
                     <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium z-10">
                       Watched
@@ -377,7 +373,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                     <PlayCircle className="text-white h-12 w-12 drop-shadow-md" />
                   </div>
                 </div>
-                
+
                 <CardContent className="p-0">
                   <h3 className={`font-semibold text-sm line-clamp-2 leading-tight mb-1 ${video.watched ? 'text-muted-foreground' : 'wrap-break-word'}`} title={video.title}>
                     {video.title}

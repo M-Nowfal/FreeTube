@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Play, ThumbsUp, MessageSquare, Trash2, CheckCircle, Share2 } from "lucide-react";
 import { Alert } from "@/components/others/alert";
 import { useUserStore } from "@/store/useUserStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { sharePlaylist } from "@/lib/share-playlist";
 
 interface IVideoExtended extends IVideo {
@@ -31,12 +32,12 @@ export default function SinglePlaylistPage() {
   const router = useRouter();
 
   const { user } = useUserStore();
+  const { getPlaylistById, fetchPlaylists, updatePlaylistVideos, removeVideoFromPlaylist, deletePlaylist } = usePlaylistStore();
 
-  const [playlist, setPlaylist] = useState<IPlaylist | null>(null);
+  const [playlist, setPlaylist] = useState<IPlaylist & { _id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentVideo, setCurrentVideo] = useState<IVideoExtended | null>(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
-
   const [videoStats, setVideoStats] = useState<Record<string, IVideoStats>>({});
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -47,77 +48,38 @@ export default function SinglePlaylistPage() {
     } catch { return null; }
   };
 
-  useEffect(() => {
-    const fetchPlaylistAndStats = async () => {
-      try {
-        const { data } = await axios.get(`/api/playlists/${params.id}?t=${new Date().getTime()}`);
-        setPlaylist(data.playlist);
-
-        if (data.playlist.videos.length > 0) {
-          const targetVideo = videoId
-            ? data.playlist.videos.find((v: IVideoExtended) =>
-              v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
-            )
-            : null;
-
-          handleVideoSelect(targetVideo || data.playlist.videos[0]);
-
-          const idsToFetch = data.playlist.videos
-            .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
-            .filter(Boolean);
-
-          const commaSeparatedIds = idsToFetch.slice(0, 50).join(",");
-
-          if (commaSeparatedIds) {
-            const statsRes = await axios.get(`/api/youtube/bulk?ids=${commaSeparatedIds}`);
-            setVideoStats(statsRes.data.stats);
-          }
-        }
-      } catch {
-        toast.error("Failed to load playlist");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (params.id) fetchPlaylistAndStats();
-  }, [params.id, videoId]);
-
   const handleVideoSelect = async (video: IVideoExtended) => {
     setCurrentVideo(video);
     setShowFullDesc(false);
-    
-    // Auto-scroll to top so user sees the new video playing
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
 
-    if (!video.watched) {
-      try {
-        await axios.patch(`/api/playlists/${params.id}`, {
+    setPlaylist(prev => {
+      if (!prev) return prev;
+      const isWatched = prev.videos.some(v => (v.videoId || extractVideoId(v.thumbnail)) === actualVideoId && v.watched);
+
+      if (!isWatched) {
+        axios.patch(`/api/playlists/${prev._id}`, {
           action: "MARK_WATCHED",
           videoId: actualVideoId
-        });
-
-        setPlaylist(prev => {
-          if (!prev) return prev;
-          const updatedVideos = prev.videos.map(v => {
+        }).then(() => {
+          updatePlaylistVideos(prev._id, prev.videos.map(v => {
             const vId = v.videoId || extractVideoId(v.thumbnail);
             return vId === actualVideoId ? { ...v, watched: true } : v;
-          });
-          return { ...prev, videos: updatedVideos };
-        });
-      } catch (error) {
-        console.error("Failed to mark as watched");
+          }));
+        }).catch(() => console.error("Failed to mark as watched"));
       }
-    }
+
+      return prev;
+    });
   };
 
   const playNextVideo = () => {
     if (!playlist || !currentVideo) return;
 
     const currentVidId = currentVideo.videoId || extractVideoId(currentVideo.thumbnail);
-    
+
     const currentIndex = playlist.videos.findIndex((v) => {
       const vId = v.videoId || extractVideoId(v.thumbnail);
       return vId === currentVidId;
@@ -129,6 +91,64 @@ export default function SinglePlaylistPage() {
   };
 
   useEffect(() => {
+    if (!user?.username) return;
+
+    const loadPlaylist = async () => {
+      const cachedPlaylist = getPlaylistById(params.id as string);
+
+      if (cachedPlaylist) {
+        setPlaylist(cachedPlaylist);
+        const targetVideo = videoId
+          ? cachedPlaylist.videos.find((v: IVideoExtended) =>
+              v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
+            )
+          : null;
+        handleVideoSelect(targetVideo || cachedPlaylist.videos[0]);
+        setLoading(false);
+
+        if (cachedPlaylist.videos.length > 0) {
+          const idsToFetch = cachedPlaylist.videos
+            .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
+            .filter(Boolean)
+            .slice(0, 50)
+            .join(",");
+          if (idsToFetch) {
+            const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
+            setVideoStats(res.data.stats);
+          }
+        }
+      } else {
+        await fetchPlaylists(user.username);
+        const refreshed = getPlaylistById(params.id as string);
+        if (refreshed) {
+          setPlaylist(refreshed);
+          const targetVideo = videoId
+            ? refreshed.videos.find((v: IVideoExtended) =>
+                v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
+              )
+            : null;
+          handleVideoSelect(targetVideo || refreshed.videos[0]);
+
+          if (refreshed.videos.length > 0) {
+            const idsToFetch = refreshed.videos
+              .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
+              .filter(Boolean)
+              .slice(0, 50)
+              .join(",");
+            if (idsToFetch) {
+              const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
+              setVideoStats(res.data.stats);
+            }
+          }
+        }
+        setLoading(false);
+      }
+    };
+
+    loadPlaylist();
+  }, [params.id, user?.username]);
+
+  useEffect(() => {
     const handleYouTubeMessage = (event: MessageEvent) => {
       if (event.origin !== "https://www.youtube.com") return;
 
@@ -137,26 +157,27 @@ export default function SinglePlaylistPage() {
         if (data.event === "infoDelivery" && data.info?.playerState === 0) {
           playNextVideo();
         }
-      } catch (e) {
+      } catch {
         // Ignore JSON parsing errors
       }
     };
 
     window.addEventListener("message", handleYouTubeMessage);
     return () => window.removeEventListener("message", handleYouTubeMessage);
-  }, [playlist, currentVideo]); 
+  }, [playlist, currentVideo]);
 
   const handleRemoveVideo = async (videoIdToRemove: string) => {
+    if (!playlist) return;
     try {
-      await axios.patch(`/api/playlists/${params.id}`, {
+      await axios.patch(`/api/playlists/${playlist._id}`, {
         action: "REMOVE_VIDEO",
         videoId: videoIdToRemove
       });
 
+      removeVideoFromPlaylist(playlist._id, videoIdToRemove);
       setPlaylist(prev => {
         if (!prev) return prev;
-        const newVideos = prev.videos.filter(v => (v.videoId || extractVideoId(v.thumbnail)) !== videoIdToRemove);
-        return { ...prev, videos: newVideos };
+        return { ...prev, videos: prev.videos.filter(v => (v.videoId || extractVideoId(v.thumbnail)) !== videoIdToRemove) };
       });
       toast.success("Video removed");
     } catch (error) {
@@ -165,8 +186,10 @@ export default function SinglePlaylistPage() {
   };
 
   const handleDeletePlaylist = async () => {
+    if (!playlist) return;
     try {
-      await axios.delete(`/api/playlists/${params.id}`);
+      await axios.delete(`/api/playlists/${playlist._id}`);
+      deletePlaylist(playlist._id);
       toast.success("Playlist deleted");
       router.replace("/playlist");
     } catch (error) {
@@ -207,11 +230,8 @@ export default function SinglePlaylistPage() {
 
   return (
     <div className="w-full sm:p-1 sm:px-6 lg:px-8">
-
       <div className="flex flex-col lg:flex-row gap-6 w-full">
-
         <div className="lg:w-[70%] lg:sticky lg:top-6 h-fit space-y-4">
-
           <div className="sticky top-0 z-10 sm:relative w-full aspect-video bg-black sm:rounded-lg overflow-hidden">
             {currentVideoId ? (
               <iframe
@@ -223,13 +243,12 @@ export default function SinglePlaylistPage() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 onLoad={() => {
-                  // FIX: Added a slight delay so YouTube's internal script has time to load before we knock
                   setTimeout(() => {
                     iframeRef.current?.contentWindow?.postMessage(
                       JSON.stringify({ event: "listening" }),
                       "*"
                     );
-                  }, 500); 
+                  }, 500);
                 }}
               ></iframe>
             ) : (
@@ -239,7 +258,6 @@ export default function SinglePlaylistPage() {
 
           {currentVideo && (
             <div className="space-y-4 px-3 overflow-hidden">
-              {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
               <h1 className="text-xl md:text-2xl font-bold wrap-break-word">{currentVideo.title}</h1>
 
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -261,7 +279,6 @@ export default function SinglePlaylistPage() {
                 <p className="font-semibold mb-2">
                   {displayViews.toLocaleString()} views
                 </p>
-                {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
                 <div className={`whitespace-pre-wrap wrap-break-word leading-relaxed ${showFullDesc ? "" : "line-clamp-3"}`}>
                   {displayDescription ? renderDescription(displayDescription) : "No description available."}
                 </div>
@@ -280,7 +297,6 @@ export default function SinglePlaylistPage() {
 
         <div className="lg:w-[30%] flex flex-col max-h-[calc(100vh-20rem)] sm:max-h-[calc(100vh-5rem)] lg:min-w-75 p-2">
           <div className="border border-border rounded-xl flex flex-col h-full bg-card overflow-hidden">
-
             <div className="p-4 bg-secondary/30 border-b border-border flex items-center justify-between shrink-0">
               <div className="overflow-hidden">
                 <h2 className="text-lg font-bold line-clamp-1">{playlist.channelTitle} Playlist</h2>
@@ -302,7 +318,7 @@ export default function SinglePlaylistPage() {
                 </div>
               </div>
               <div>
-                <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, params.id as string)}>
+                <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, playlist._id)}>
                   <Share2 className="h-4 w-4" />
                 </Button>
                 <Alert
@@ -327,8 +343,7 @@ export default function SinglePlaylistPage() {
                   <div
                     key={idx}
                     onClick={() => handleVideoSelect(video)}
-                    className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all group relative ${isPlaying ? "bg-secondary" : "hover:bg-muted"
-                      }`}
+                    className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all group relative ${isPlaying ? "bg-secondary" : "hover:bg-muted"}`}
                   >
                     <div className="relative w-32 aspect-video rounded-md overflow-hidden shrink-0 bg-black">
                       <Image
@@ -350,7 +365,6 @@ export default function SinglePlaylistPage() {
                     </div>
 
                     <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
-                      {/* FIX: Removed invalid 'wrap-break-word', added standard 'break-words' */}
                       <h3 className={`font-medium text-sm line-clamp-2 wrap-break-word ${isPlaying ? "text-primary" : ""}`}>
                         {video.title}
                       </h3>
@@ -385,7 +399,6 @@ export default function SinglePlaylistPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

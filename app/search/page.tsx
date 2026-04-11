@@ -3,16 +3,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader } from "@/components/ui/loader";
-import { useUserStore } from "@/store/useUserStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
 import Image from "next/image";
 import Link from "next/link";
-import axios from "axios";
-import { IPlaylist, IVideo } from "@/types/playlist";
-import { API_URL } from "@/utils/constants";
 import { PlaySquare, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { IVideo } from "@/types/playlist";
 
 interface IFlatVideo extends IVideo {
   playlistId: string;
@@ -23,9 +21,7 @@ interface IFlatVideo extends IVideo {
 
 export default function SearchPage() {
   const { isAuth, loading: authLoading } = useAuth();
-  const { user } = useUserStore();
-  const [loading, setLoading] = useState(true);
-  const [allVideos, setAllVideos] = useState<IFlatVideo[]>([]);
+  const { cache, loading, fetchPlaylists } = usePlaylistStore();
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
@@ -38,31 +34,21 @@ export default function SearchPage() {
   }, [authLoading, isAuth, router]);
 
   useEffect(() => {
-    const fetchAllVideos = async () => {
-      if (!user?.username) return;
+    if (!cache && !loading) {
+      fetchPlaylists("");
+    }
+  }, []);
 
-      try {
-        const { data } = await axios.get(`${API_URL}/playlists?username=${user.username}`);
-        const playlists: IPlaylist[] = data.playlists;
-
-        const flattenedVideos = playlists.flatMap((playlist: any) =>
-          playlist.videos.map((video: IVideo) => ({
-            ...video,
-            playlistId: playlist._id,
-            channelTitle: playlist.channelTitle,
-          }))
-        );
-
-        setAllVideos(flattenedVideos.reverse());
-      } catch (error) {
-        console.error("Failed to load videos", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllVideos();
-  }, [user]);
+  const allVideos = useMemo(() => {
+    if (!cache?.playlists) return [];
+    return cache.playlists.flatMap((playlist) =>
+      playlist.videos.map((video) => ({
+        ...video,
+        playlistId: playlist._id,
+        channelTitle: playlist.channelTitle,
+      }))
+    ).reverse();
+  }, [cache]);
 
   const filteredVideos = useMemo(() => {
     if (!searchQuery.trim()) return allVideos;
