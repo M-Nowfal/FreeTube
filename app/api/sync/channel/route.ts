@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { Playlist } from "@/models/playlist.model";
-import { User } from "@/models/user.model";
 import axios from "axios";
 import { YOUTUBE_API_KEY } from "@/utils/constants";
 
@@ -15,48 +14,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    const now = new Date();
-    const publishedAfter = new Date();
+    let publishedAfter: Date | null = null;
 
-    switch (timeframe) {
-      case "1h":
-        publishedAfter.setHours(now.getHours() - 1);
-        break;
-      case "1d":
-        publishedAfter.setDate(now.getDate() - 1);
-        break;
-      case "1w":
-        publishedAfter.setDate(now.getDate() - 7);
-        break;
-      case "1m":
-        publishedAfter.setMonth(now.getMonth() - 1);
-        break;
-      case "1y":
-        publishedAfter.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        publishedAfter.setDate(now.getDate() - 1);
+    if (timeframe === "last") {
+      const playlist = await Playlist.findOne({ username, channelTitle });
+      if (playlist && playlist.videos.length > 0) {
+        const sortedVideos = [...playlist.videos].sort((a, b) => {
+          const dateA = new Date(a.publishedAt || 0).getTime();
+          const dateB = new Date(b.publishedAt || 0).getTime();
+          return dateB - dateA;
+        });
+        const latestVideo = sortedVideos[0];
+        if (latestVideo?.publishedAt) {
+          publishedAfter = new Date(latestVideo.publishedAt);
+        }
+      }
+    } else {
+      const now = new Date();
+      publishedAfter = new Date();
+
+      switch (timeframe) {
+        case "1h":
+          publishedAfter.setHours(now.getHours() - 1);
+          break;
+        case "1d":
+          publishedAfter.setDate(now.getDate() - 1);
+          break;
+        case "1w":
+          publishedAfter.setDate(now.getDate() - 7);
+          break;
+        case "1m":
+          publishedAfter.setMonth(now.getMonth() - 1);
+          break;
+        case "1y":
+          publishedAfter.setFullYear(now.getFullYear() - 1);
+          break;
+        default:
+          publishedAfter.setDate(now.getDate() - 1);
+      }
     }
 
     let totalAdded = 0;
 
-    const ytRes = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-      params: {
-        part: "snippet",
-        channelId: channelId,
-        type: "video",
-        order: "date",
-        maxResults: 50,
-        publishedAfter: publishedAfter.toISOString(),
-        key: YOUTUBE_API_KEY,
-      },
-    });
+    const searchParams: any = {
+      part: "snippet",
+      channelId: channelId,
+      type: "video",
+      order: "date",
+      maxResults: 50,
+      key: YOUTUBE_API_KEY,
+    };
+
+    if (publishedAfter) {
+      searchParams.publishedAfter = publishedAfter.toISOString();
+    }
+
+    const ytRes = await axios.get("https://www.googleapis.com/youtube/v3/search", { params: searchParams });
 
     const items = ytRes.data.items;
 
     if (items && items.length > 0) {
       let playlist = await Playlist.findOne({ username, channelTitle });
-      
+
       if (!playlist) {
         playlist = new Playlist({ username, channelTitle, videos: [] });
       }
@@ -64,7 +83,7 @@ export async function POST(req: NextRequest) {
       for (const item of items) {
         const videoId = item.id.videoId;
         const exists = playlist.videos.some((v: any) => v.videoId === videoId);
-        
+
         if (!exists) {
           playlist.videos.push({
             videoId,

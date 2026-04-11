@@ -30,21 +30,12 @@ export default function PlaylistPage() {
   const [url, setUrl] = useState("");
   const [addLoading, setAddLoading] = useState(false);
 
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
   const router = useRouter();
 
   const playlists = cache?.playlists || [];
   const lastSynced = cache?.lastSynced || null;
-
-  const handleAuthRedirect = () => {
-    if (!isAuth && !authLoading) {
-      toast.info("Login to access channels.");
-      router.replace("/auth/login");
-      return true;
-    }
-    return false;
-  };
 
   useEffect(() => {
     initAuth();
@@ -177,11 +168,12 @@ export default function PlaylistPage() {
                 <SelectValue placeholder="Timeframe" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1h">Last 1 Hour</SelectItem>
-                <SelectItem value="1d">Last 1 Day</SelectItem>
-                <SelectItem value="1w">Last 1 Week</SelectItem>
-                <SelectItem value="1m">Last 1 Month</SelectItem>
-                <SelectItem value="1y">Last 1 Year</SelectItem>
+                <SelectItem value="last">From Last Video</SelectItem>
+                <SelectItem value="1h">Past Hour</SelectItem>
+                <SelectItem value="1d">Past Day</SelectItem>
+                <SelectItem value="1w">Past Week</SelectItem>
+                <SelectItem value="1m">Past Month</SelectItem>
+                <SelectItem value="1y">Past Year</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="secondary" onClick={handleSync} disabled={syncing || addLoading}>

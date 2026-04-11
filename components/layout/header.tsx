@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { useUserStore } from "@/store/useUserStore";
 
 export function Header(): JSX.Element {
-  const { isAuth, loading, setIsAuth } = useAuth();
+  const { isAuth, loading } = useAuth();
   const { setUser } = useUserStore();
   const router = useRouter();
   const { data, error, mutate } = useMutate();
@@ -30,7 +30,6 @@ export function Header(): JSX.Element {
   useEffect(() => {
     if (data && !error) {
       setUser(null);
-      setIsAuth(false);
       toast.success("Logged out successfully");
       router.replace("/");
     }
@@ -40,7 +39,15 @@ export function Header(): JSX.Element {
   }, [data, error]);
 
   async function logout() {
-    await mutate("/auth/logout");
+    mutate("/auth/logout")
+      .then(() => {
+        setUser(null);
+        router.replace("/auth/login");
+        window.location.reload();
+      })
+      .catch(() => {
+        toast.error("Failed to log out. Please try again.");
+      });
   }
 
   const links = [

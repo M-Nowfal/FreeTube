@@ -19,59 +19,79 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "No subscriptions found" }, { status: 404 });
     }
 
-    const now = new Date();
-    const publishedAfter = new Date();
-
-    switch (timeframe) {
-      case "1h":
-        publishedAfter.setHours(now.getHours() - 1);
-        break;
-      case "1d":
-        publishedAfter.setDate(now.getDate() - 1);
-        break;
-      case "1w":
-        publishedAfter.setDate(now.getDate() - 7);
-        break;
-      case "1m":
-        publishedAfter.setMonth(now.getMonth() - 1);
-        break;
-      case "1y":
-        publishedAfter.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        publishedAfter.setDate(now.getDate() - 1);
-    }
-
     let totalAdded = 0;
 
     for (const sub of user.subscriptions) {
       try {
-        const ytRes = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-          params: {
-            part: "snippet",
-            channelId: sub.channelId,
-            type: "video",
-            order: "date",
-            maxResults: 50,
-            publishedAfter: publishedAfter.toISOString(),
-            key: YOUTUBE_API_KEY,
-          },
-        });
+        let publishedAfter: Date | null = null;
+
+        if (timeframe === "last") {
+          const playlist = await Playlist.findOne({ username, channelTitle: sub.title });
+          if (playlist && playlist.videos.length > 0) {
+            const sortedVideos = [...playlist.videos].sort((a, b) => {
+              const dateA = new Date(a.publishedAt || 0).getTime();
+              const dateB = new Date(b.publishedAt || 0).getTime();
+              return dateB - dateA;
+            });
+            const latestVideo = sortedVideos[0];
+            if (latestVideo?.publishedAt) {
+              publishedAfter = new Date(latestVideo.publishedAt);
+            }
+          }
+        } else {
+          const now = new Date();
+          publishedAfter = new Date();
+
+          switch (timeframe) {
+            case "1h":
+              publishedAfter.setHours(now.getHours() - 1);
+              break;
+            case "1d":
+              publishedAfter.setDate(now.getDate() - 1);
+              break;
+            case "1w":
+              publishedAfter.setDate(now.getDate() - 7);
+              break;
+            case "1m":
+              publishedAfter.setMonth(now.getMonth() - 1);
+              break;
+            case "1y":
+              publishedAfter.setFullYear(now.getFullYear() - 1);
+              break;
+            default:
+              publishedAfter.setDate(now.getDate() - 1);
+          }
+        }
+
+        const searchParams: any = {
+          part: "snippet",
+          channelId: sub.channelId,
+          type: "video",
+          order: "date",
+          maxResults: 50,
+          key: YOUTUBE_API_KEY,
+        };
+
+        if (publishedAfter) {
+          searchParams.publishedAfter = publishedAfter.toISOString();
+        }
+
+        const ytRes = await axios.get("https://www.googleapis.com/youtube/v3/search", { params: searchParams });
 
         const items = ytRes.data.items;
         if (!items || items.length === 0) continue;
 
         let playlist = await Playlist.findOne({ username, channelTitle: sub.title });
-        
+
         if (!playlist) {
           playlist = new Playlist({ username, channelTitle: sub.title, videos: [] });
         }
 
         for (const item of items) {
           const videoId = item.id.videoId;
-          
+
           const exists = playlist.videos.some((v: any) => v.videoId === videoId);
-          
+
           if (!exists) {
             playlist.videos.push({
               videoId,

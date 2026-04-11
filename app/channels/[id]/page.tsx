@@ -69,7 +69,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
@@ -310,6 +310,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                   <SelectValue placeholder="Sync Time" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="last">From Last Video</SelectItem>
                   <SelectItem value="1h">Past Hour</SelectItem>
                   <SelectItem value="1d">Past Day</SelectItem>
                   <SelectItem value="1w">Past Week</SelectItem>

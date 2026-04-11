@@ -44,7 +44,7 @@ export default function SearchChannelsPage() {
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
   const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
 
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
 
   const router = useRouter();
@@ -277,13 +277,14 @@ export default function SearchChannelsPage() {
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Timeframe" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">Last 1 Hour</SelectItem>
-                <SelectItem value="1d">Last 1 Day</SelectItem>
-                <SelectItem value="1w">Last 1 Week</SelectItem>
-                <SelectItem value="1m">Last 1 Month</SelectItem>
-                <SelectItem value="1y">Last 1 Year</SelectItem>
-              </SelectContent>
+                <SelectContent>
+                  <SelectItem value="last">From Last Video</SelectItem>
+                  <SelectItem value="1h">Past Hour</SelectItem>
+                  <SelectItem value="1d">Past Day</SelectItem>
+                  <SelectItem value="1w">Past Week</SelectItem>
+                  <SelectItem value="1m">Past Month</SelectItem>
+                  <SelectItem value="1y">Past Year</SelectItem>
+                </SelectContent>
             </Select>
             <Button variant="secondary" onClick={handleSync} disabled={syncing}>
               {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
