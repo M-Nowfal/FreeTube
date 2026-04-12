@@ -120,11 +120,25 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
+    // Get channel title before removing
+    const user = await User.findOne({ username });
+    const channel = user?.subscriptions.find((sub: any) => sub.channelId === channelId);
+    const channelTitle = channel?.title;
+
+    // Remove from subscriptions
     await User.findOneAndUpdate(
       { username },
       { $pull: { subscriptions: { channelId } } },
       { new: true }
     );
+
+    // Remove all related shorts from Short collection
+    await Short.deleteMany({ username, channelId });
+
+    // Remove all related playlists from Playlist collection
+    if (channelTitle) {
+      await Playlist.deleteMany({ username, channelTitle });
+    }
 
     return NextResponse.json({ message: "Unsubscribed successfully" }, { status: 200 });
   } catch (error) {
