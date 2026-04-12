@@ -6,7 +6,7 @@ import { useChannelStore } from "@/store/useChannelStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2 } from "lucide-react";
+import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2, Scissors, UserMinus } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IVideo } from "@/types/playlist";
@@ -77,6 +77,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [syncing, setSyncing] = useState(false);
   const [unsubscribing, setUnsubscribing] = useState(false);
 
+  const [shortsCount, setShortsCount] = useState(0);
+  const [videosCount, setVideosCount] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     if (user?.username && id) {
       const cached = getChannelData(id);
@@ -98,6 +102,79 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       setPlaylistUpdatedAt(cached.playlistUpdatedAt);
     }
   }, [cache[id]]);
+
+  // Calculate shorts vs long videos count
+  useEffect(() => {
+    if (videos.length > 0 && channelInfo) {
+      const shorts = videos.filter((v: IVideo) => {
+        const duration = (v as any).duration || 0;
+        return duration > 0 && duration < 60;
+      });
+      setShortsCount(shorts.length);
+      setVideosCount(videos.length - shorts.length);
+    }
+  }, [videos, channelInfo]);
+
+  const handleDeleteAllShorts = async () => {
+    if (!user?.username || !channelInfo) return;
+
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/shorts?username=${user.username}&channelId=${channelInfo.channelId}`);
+      toast.success(`${shortsCount} shorts deleted`);
+      invalidate(id);
+      fetchChannel(id, user.username, titleParam);
+      setShortsCount(0);
+    } catch (error) {
+      toast.error("Failed to delete shorts");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteAllVideos = async () => {
+    if (!user?.username || !channelInfo) return;
+
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/shorts?username=${user.username}&channelTitle=${encodeURIComponent(channelInfo.title)}`);
+      toast.success(`${videosCount} videos deleted`);
+      // Refresh data
+      invalidate(id);
+      fetchChannel(id, user.username, titleParam);
+      setVideosCount(0);
+    } catch (error) {
+      toast.error("Failed to delete videos");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteShort = async (shortId: string) => {
+    if (!user?.username) return;
+
+    try {
+      await axios.delete(`/api/shorts?username=${user.username}&shortId=${shortId}`);
+      setVideos((prev) => prev.filter((v: any) => (v as any)._id !== shortId));
+      toast.success("Short deleted");
+      setShortsCount((prev) => prev - 1);
+    } catch (error) {
+      toast.error("Failed to delete short");
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string, channelTitle: string) => {
+    if (!user?.username) return;
+
+    try {
+      await axios.delete(`/api/shorts?username=${user.username}&videoId=${videoId}&channelTitle=${encodeURIComponent(channelTitle)}`);
+      setVideos((prev) => prev.filter((v: any) => v.videoId !== videoId));
+      toast.success("Video deleted");
+      setVideosCount((prev) => prev - 1);
+    } catch (error) {
+      toast.error("Failed to delete video");
+    }
+  };
 
   const handleSync = async () => {
     if (!user?.username || !channelInfo) return toast.error("Please log in first");
@@ -226,12 +303,12 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
             <h1 className="text-2xl md:text-4xl font-bold tracking-tight wrap-break-word">
               {channelInfo.title}
             </h1>
-            <div className="flex items-center gap-3 mt-1">
-              <p className="text-muted-foreground text-sm">{videos.length} videos</p>
-              <span className="text-muted-foreground/50">|</span>
-              <p className="text-muted-foreground text-sm">{videos.filter((v: IVideo) => v.watched).length} watched</p>
-            </div>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <div className="flex items-center gap-3">
+                <p className="text-muted-foreground text-sm">{videos.length} videos</p>
+                <span className="text-muted-foreground/50">|</span>
+                <p className="text-muted-foreground text-sm">{videos.filter((v: IVideo) => v.watched).length} watched</p>
+              </div>
               <Alert
                 trigger={
                   <Button
@@ -239,14 +316,44 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                     size="sm"
                     disabled={unsubscribing}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <UserMinus className="h-4 w-4 mr-2" />
                     {unsubscribing ? "Unsubscribing..." : "Unsubscribe"}
                   </Button>
                 }
-                title="Confirm Unsubscribe"
-                description={`Are you sure you want to unsubscribe from "${channelInfo.title}"? This will also delete all synced videos.`}
+                title={`Unsubscribe from ${channelInfo.title}?`}
+                description={`Are you sure you want to unsubscribe from ${channelInfo.title}? This will remove the channel and all its videos from your library. You can always subscribe again later.`}
                 onContinue={handleUnsubscribe}
               />
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              {shortsCount > 0 && (
+                <Alert
+                  title={`Delete ${shortsCount} Shorts?`}
+                  description={`This will permanently delete all ${shortsCount} shorts from ${channelInfo?.title}. This action cannot be undone.`}
+                  onContinue={handleDeleteAllShorts}
+                  loading={deleting}
+                  trigger={
+                    <Button variant="outline" size="sm" disabled={deleting} className="text-orange-500 border-orange-500 hover:bg-orange-50">
+                      <Scissors className="h-4 w-4 mr-2" />
+                      {deleting ? "Deleting..." : `Delete ${shortsCount} Shorts`}
+                    </Button>
+                  }
+                />
+              )}
+              {videosCount > 0 && (
+                <Alert
+                  title={`Delete ${videosCount} Videos?`}
+                  description={`This will permanently delete all ${videosCount} videos from ${channelInfo?.title}. This action cannot be undone.`}
+                  onContinue={handleDeleteAllVideos}
+                  loading={deleting}
+                  trigger={
+                    <Button variant="outline" size="sm" disabled={deleting} className="text-red-500 border-red-500 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleting ? "Deleting..." : `Delete ${videosCount} Videos`}
+                    </Button>
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
@@ -388,49 +495,74 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 md:px-0">
-            {sortedVideos.map((video, idx) => (
-              <Card key={idx} className="group overflow-hidden bg-transparent border-none shadow-none">
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-muted mb-3 cursor-pointer" onClick={() => handlePlayVideo(video)}>
-                  {video.thumbnail ? (
-                    <Image
-                      src={video.thumbnail}
-                      alt={video.title}
-                      fill
-                      className={`object-cover transition-transform duration-300 group-hover:scale-105 ${video.watched ? 'opacity-60' : ''}`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-secondary">
-                      <PlaySquare className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
+            {sortedVideos.map((video, idx) => {
+              const duration = (video as any).duration || 0;
+              const isShort = duration > 0 && duration < 60;
+              return (
+                <Card key={idx} className="group overflow-hidden bg-transparent border-none shadow-none relative">
+                  <Alert
+                    title={isShort ? "Delete Short?" : "Delete Video?"}
+                    description={isShort ? "This short will be permanently deleted." : "This video will be permanently deleted from the playlist."}
+                    onContinue={() => {
+                      if (isShort && (video as any)._id) {
+                        handleDeleteShort((video as any)._id);
+                      } else {
+                        handleDeleteVideo(video.videoId, channelInfo?.title || '');
+                      }
+                    }}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="absolute top-8 right-2 z-20 p-1.5 bg-black/70 hover:bg-red-600 text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        title={isShort ? "Delete Short" : "Delete Video"}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    }
+                  />
 
-                  {video.watched && (
-                    <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium z-10">
-                      Watched
-                    </div>
-                  )}
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-muted mb-3 cursor-pointer" onClick={() => handlePlayVideo(video)}>
+                    {video.thumbnail ? (
+                      <Image
+                        src={video.thumbnail}
+                        alt={video.title}
+                        fill
+                        className={`object-cover transition-transform duration-300 group-hover:scale-105 ${video.watched ? 'opacity-60' : ''}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-secondary">
+                        <PlaySquare className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
 
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all z-10">
-                    <PlayCircle className="text-white h-12 w-12 drop-shadow-md" />
+                    {video.watched && (
+                      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium z-10">
+                        Watched
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all z-10">
+                      <PlayCircle className="text-white h-12 w-12 drop-shadow-md" />
+                    </div>
                   </div>
-                </div>
 
-                <CardContent className="p-0">
-                  <h3 className={`font-semibold text-sm line-clamp-2 leading-tight mb-1 ${video.watched ? 'text-muted-foreground' : 'wrap-break-word'}`} title={video.title}>
-                    {video.title}
-                  </h3>
-                  {video.publishedAt && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(video.publishedAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  <CardContent className="p-0">
+                    <h3 className={`font-semibold text-sm line-clamp-2 leading-tight mb-1 ${video.watched ? 'text-muted-foreground' : 'wrap-break-word'}`} title={video.title}>
+                      {video.title}
+                    </h3>
+                    {video.publishedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(video.publishedAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
