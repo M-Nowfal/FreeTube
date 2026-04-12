@@ -48,7 +48,15 @@ export function SideBar(): JSX.Element {
   }, [data, error]);
 
   async function logout() {
-    await mutate("/auth/logout");
+    mutate("/auth/logout")
+      .then(() => {
+        setUser(null);
+        router.replace("/auth/login");
+        window.location.reload();
+      })
+      .catch(() => {
+        toast.error("Failed to log out. Please try again.");
+      });
   }
 
   const links = [

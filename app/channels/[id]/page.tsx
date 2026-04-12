@@ -69,7 +69,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  const [timeframe, setTimeframe] = useState("last");
+  const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {

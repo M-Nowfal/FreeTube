@@ -35,10 +35,14 @@ export async function POST(req: NextRequest) {
             });
             const latestVideo = sortedVideos[0];
             if (latestVideo?.publishedAt) {
-              publishedAfter = new Date(latestVideo.publishedAt);
+              const latestDate = new Date(latestVideo.publishedAt);
+              latestDate.setSeconds(latestDate.getSeconds() + 1);
+              publishedAfter = latestDate;
             }
           }
-        } else {
+        }
+
+        if (!publishedAfter) {
           const now = new Date();
           publishedAfter = new Date();
 

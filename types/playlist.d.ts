@@ -13,3 +13,11 @@ export interface IPlaylist {
   videos: IVideo[];
   updatedAt?: string;
 }
+
+export interface ICustomPlaylist {
+  _id?: string;
+  username: string;
+  playlistName: string;
+  videos: IVideo[];
+  updatedAt?: string;
+}

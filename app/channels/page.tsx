@@ -44,7 +44,7 @@ export default function SearchChannelsPage() {
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
   const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
 
-  const [timeframe, setTimeframe] = useState("last");
+  const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
 
   const router = useRouter();
