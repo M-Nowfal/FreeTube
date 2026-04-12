@@ -1,11 +1,5 @@
-import { IVideo } from "@/types/playlist";
-import { model, models, Schema, Document } from "mongoose";
-
-export interface IPlaylist extends Document {
-  username: string;
-  channelTitle: string;
-  videos: IVideo[];
-}
+import { IPlaylist, IVideo } from "@/types/playlist";
+import { model, models, Schema } from "mongoose";
 
 const VideoSchema = new Schema<IVideo>({
   videoId: { type: String, required: true },
@@ -26,7 +20,8 @@ const PlaylistSchema = new Schema<IPlaylist>({
     type: String,
     required: true
   },
-  videos: [VideoSchema]
+  videos: [VideoSchema],
+  isCustom: { type: Boolean, default: false }
 }, { timestamps: true });
 
 PlaylistSchema.index({ username: 1, channelTitle: 1 });

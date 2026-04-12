@@ -1,18 +1,22 @@
-import { API_URL } from "@/utils/constants";
 import { toast } from "sonner";
 
-export const sharePlaylist = async (channelName: string, shareUrl: string) => {
+export const sharePlaylist = async (name: string, shareId: string) => {
+  const shareLink = `${window.location.origin}/playlist/share/${shareId}`;
+  
   if (navigator.share) {
     try {
       await navigator.share({
-        title: `${channelName} FreeTube Playlist`,
+        title: `${name} FreeTube Playlist`,
         text: "Check out this Playlist",
-        url: `${API_URL?.replace("api", "")}playlist/share/${shareUrl}`,
+        url: shareLink,
       });
     } catch (err: unknown) {
       console.log("Share failed or cancelled", err);
+      await navigator.clipboard.writeText(shareLink);
+      toast.success("Link copied to clipboard!");
     }
   } else {
-    toast.warning("Native share is not supported on this device/browser. Please copy the link instead.");
+    await navigator.clipboard.writeText(shareLink);
+    toast.success("Link copied to clipboard!");
   }
 };

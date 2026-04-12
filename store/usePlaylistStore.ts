@@ -1,49 +1,46 @@
 import { create } from "zustand";
 import axios from "axios";
-import { IPlaylist, IVideo, ICustomPlaylist } from "@/types/playlist";
+import { IPlaylist, IVideo } from "@/types/playlist";
 import { API_URL } from "@/utils/constants";
 
 interface PlaylistCache {
   playlists: (IPlaylist & { _id: string })[];
   lastFetched: number;
   lastSynced: string | null;
-}
-
-interface CustomPlaylistCache {
-  playlists: ICustomPlaylist[];
-  lastFetched: number;
+  username?: string;
 }
 
 interface PlaylistState {
   cache: PlaylistCache | null;
-  customCache: CustomPlaylistCache | null;
   loading: boolean;
-  customLoading: boolean;
   error: string | null;
-  fetchPlaylists: (username: string) => Promise<void>;
+  fetchPlaylists: (username: string, force?: boolean) => Promise<void>;
   getPlaylistById: (id: string) => (IPlaylist & { _id: string }) | undefined;
   updatePlaylistVideos: (playlistId: string, videos: IVideo[]) => void;
   addVideoToPlaylist: (playlistId: string, video: IVideo) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
   addNewPlaylist: (playlist: IPlaylist & { _id: string }) => void;
-  deletePlaylist: (id: string) => void;
+  deletePlaylist: (id: string) => Promise<void>;
+  createPlaylist: (username: string, playlistName: string, videoUrls: string[]) => Promise<IPlaylist & { _id: string }>;
   invalidate: () => void;
-  fetchCustomPlaylists: (username: string) => Promise<void>;
-  getCustomPlaylistById: (id: string) => ICustomPlaylist | undefined;
-  createCustomPlaylist: (data: { username: string; playlistName: string; videoUrls: string[] }) => Promise<ICustomPlaylist>;
-  deleteCustomPlaylist: (id: string) => Promise<void>;
-  removeVideoFromCustomPlaylist: (playlistId: string, videoId: string) => Promise<void>;
-  invalidateCustom: () => void;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   cache: null,
-  customCache: null,
   loading: false,
-  customLoading: false,
   error: null,
 
-  fetchPlaylists: async (username: string) => {
+  fetchPlaylists: async (username: string, force = false) => {
+    const { cache, loading } = get();
+    
+    // Skip if already loading
+    if (loading) return;
+    
+    // Skip if we have valid cache for this username and not forcing refresh
+    if (!force && cache?.username === username && cache.playlists.length > 0) {
+      return;
+    }
+    
     set({ loading: true, error: null });
     try {
       const { data } = await axios.get(`${API_URL}/playlists?username=${username}`);
@@ -52,6 +49,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
           playlists: data.playlists,
           lastFetched: Date.now(),
           lastSynced: data.lastSynced || null,
+          username,
         },
         loading: false,
       });
@@ -120,20 +118,38 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
             playlists: [playlist],
             lastFetched: Date.now(),
             lastSynced: null,
+            username: (playlist as any).username,
           },
         };
       }
+      
+      // Check if playlist already exists (by _id or channelTitle)
+      const existingIndex = state.cache.playlists.findIndex(
+        (p) => p._id === playlist._id || p.channelTitle === playlist.channelTitle
+      );
+      
+      let updatedPlaylists;
+      if (existingIndex >= 0) {
+        // Update existing playlist
+        updatedPlaylists = [...state.cache.playlists];
+        updatedPlaylists[existingIndex] = playlist;
+      } else {
+        // Add new playlist
+        updatedPlaylists = [playlist, ...state.cache.playlists];
+      }
+      
       return {
         cache: {
           ...state.cache,
-          playlists: [playlist, ...state.cache.playlists],
+          playlists: updatedPlaylists,
           lastFetched: Date.now(),
         },
       };
     });
   },
 
-  deletePlaylist: (id: string) => {
+  deletePlaylist: async (id: string) => {
+    await axios.delete(`${API_URL}/playlists/${id}`);
     set((state) => {
       if (!state.cache) return state;
       return {
@@ -150,88 +166,35 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     set({ cache: null });
   },
 
-  fetchCustomPlaylists: async (username: string) => {
-    set({ customLoading: true, error: null });
-    try {
-      const { data } = await axios.get(`${API_URL}/custom-playlist?username=${username}`);
-      set({
-        customCache: {
-          playlists: data.playlists,
-          lastFetched: Date.now(),
-        },
-        customLoading: false,
-      });
-    } catch (error: any) {
-      set({ error: error.message || "Failed to fetch custom playlists", customLoading: false });
-    }
-  },
-
-  getCustomPlaylistById: (id: string) => {
-    const { customCache } = get();
-    return customCache?.playlists.find((p) => p._id === id);
-  },
-
-  createCustomPlaylist: async (data: { username: string; playlistName: string; videoUrls: string[] }) => {
-    const { data: response } = await axios.post(`${API_URL}/custom-playlist`, data);
-    const newPlaylist = response.playlist;
+  createPlaylist: async (username: string, playlistName: string, videoUrls: string[]) => {
+    const { data } = await axios.post(`${API_URL}/playlists`, {
+      username,
+      channelTitle: playlistName,
+      videoUrls,
+      isCustom: true,
+    });
+    const newPlaylist = data.playlist;
     
     set((state) => {
-      if (!state.customCache) {
+      if (!state.cache) {
         return {
-          customCache: {
+          cache: {
             playlists: [newPlaylist],
             lastFetched: Date.now(),
+            lastSynced: null,
+            username,
           },
         };
       }
       return {
-        customCache: {
-          ...state.customCache,
-          playlists: [newPlaylist, ...state.customCache.playlists],
+        cache: {
+          ...state.cache,
+          playlists: [newPlaylist, ...state.cache.playlists],
           lastFetched: Date.now(),
         },
       };
     });
     
     return newPlaylist;
-  },
-
-  deleteCustomPlaylist: async (id: string) => {
-    await axios.delete(`${API_URL}/custom-playlist?id=${id}`);
-    set((state) => {
-      if (!state.customCache) return state;
-      return {
-        customCache: {
-          ...state.customCache,
-          playlists: state.customCache.playlists.filter((p) => p._id !== id),
-          lastFetched: Date.now(),
-        },
-      };
-    });
-  },
-
-  removeVideoFromCustomPlaylist: async (playlistId: string, videoId: string) => {
-    const { data } = await axios.patch(`${API_URL}/custom-playlist/${playlistId}`, {
-      action: "remove_video",
-      videoId,
-    });
-    const updatedPlaylist = data.playlist;
-    
-    set((state) => {
-      if (!state.customCache) return state;
-      return {
-        customCache: {
-          ...state.customCache,
-          playlists: state.customCache.playlists.map((p) =>
-            p._id === playlistId ? updatedPlaylist : p
-          ),
-          lastFetched: Date.now(),
-        },
-      };
-    });
-  },
-
-  invalidateCustom: () => {
-    set({ customCache: null });
   },
 }));

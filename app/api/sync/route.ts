@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         let publishedAfter: Date | null = null;
 
         if (timeframe === "last") {
-          const playlist = await Playlist.findOne({ username, channelTitle: sub.title });
+          const playlist = await Playlist.findOne({ username, channelTitle: sub.title, isCustom: { $ne: true } });
           if (playlist && playlist.videos.length > 0) {
             const sortedVideos = [...playlist.videos].sort((a, b) => {
               const dateA = new Date(a.publishedAt || 0).getTime();

@@ -91,58 +91,60 @@ export default function SinglePlaylistPage() {
   };
 
   useEffect(() => {
-    if (!user?.username) return;
-
     const loadPlaylist = async () => {
-      const cachedPlaylist = getPlaylistById(params.id as string);
+      const playlistId = params.id as string;
+      let cachedPlaylist = getPlaylistById(playlistId);
+
+      if (!cachedPlaylist && user?.username) {
+        await fetchPlaylists(user.username);
+        cachedPlaylist = getPlaylistById(playlistId);
+      }
+
+      let loadedPlaylist: any = null;
 
       if (cachedPlaylist) {
-        setPlaylist(cachedPlaylist);
+        loadedPlaylist = cachedPlaylist;
+      } else {
+        try {
+          const { data } = await axios.get(`/api/playlists/${playlistId}`);
+          loadedPlaylist = { 
+            ...data.playlist, 
+            videos: data.playlist.videos.map((v: any) => ({ 
+              ...v, 
+              videoId: v.videoId || extractVideoId(v.thumbnail) 
+            })) 
+          };
+        } catch (err) {
+          toast.error("Playlist not found");
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (loadedPlaylist) {
+        setPlaylist(loadedPlaylist);
         const targetVideo = videoId
-          ? cachedPlaylist.videos.find((v: IVideoExtended) =>
+          ? loadedPlaylist.videos.find((v: IVideoExtended) =>
               v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
             )
           : null;
-        handleVideoSelect(targetVideo || cachedPlaylist.videos[0]);
-        setLoading(false);
+        handleVideoSelect(targetVideo || loadedPlaylist.videos[0]);
 
-        if (cachedPlaylist.videos.length > 0) {
-          const idsToFetch = cachedPlaylist.videos
+        if (loadedPlaylist.videos.length > 0) {
+          const idsToFetch = loadedPlaylist.videos
             .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
             .filter(Boolean)
             .slice(0, 50)
             .join(",");
           if (idsToFetch) {
-            const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
-            setVideoStats(res.data.stats);
-          }
-        }
-      } else {
-        await fetchPlaylists(user.username);
-        const refreshed = getPlaylistById(params.id as string);
-        if (refreshed) {
-          setPlaylist(refreshed);
-          const targetVideo = videoId
-            ? refreshed.videos.find((v: IVideoExtended) =>
-                v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
-              )
-            : null;
-          handleVideoSelect(targetVideo || refreshed.videos[0]);
-
-          if (refreshed.videos.length > 0) {
-            const idsToFetch = refreshed.videos
-              .map((v: IVideoExtended) => v.videoId || extractVideoId(v.thumbnail))
-              .filter(Boolean)
-              .slice(0, 50)
-              .join(",");
-            if (idsToFetch) {
+            try {
               const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
-              setVideoStats(res.data.stats);
-            }
+              setVideoStats(res.data.stats || {});
+            } catch (e) {}
           }
         }
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     loadPlaylist();

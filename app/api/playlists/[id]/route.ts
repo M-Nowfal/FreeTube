@@ -55,7 +55,7 @@ export async function PATCH(
     const { id } = await params;
     const { action, videoId } = await req.json(); // Extract videoId instead of videoTitle
 
-    if (action === "MARK_WATCHED") {
+    if (action === "MARK_WATCHED" || action === "watch") {
       // Find the specific playlist and the exact video inside the array, then set watched to true
       const updatedPlaylist = await Playlist.findOneAndUpdate(
         { _id: id, "videos.videoId": videoId },

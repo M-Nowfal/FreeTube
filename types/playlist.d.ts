@@ -12,13 +12,6 @@ export interface IPlaylist {
   username: string;
   channelTitle: string;
   videos: IVideo[];
-  updatedAt?: string;
-}
-
-export interface ICustomPlaylist {
-  _id?: string;
-  username: string;
-  playlistName: string;
-  videos: IVideo[];
+  isCustom?: boolean;
   updatedAt?: string;
 }

@@ -11,26 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { getYouTubeVideoId } from "@/utils/helper";
 import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import Image from "next/image";
-import { PlaySquare, Plus, Trash2, RefreshCw, Share2, ListMusic, X, FolderPlus } from "lucide-react";
+import { PlaySquare, Plus, Trash2, RefreshCw, Share2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
-import { IVideo } from "@/types/playlist";
 import Link from "next/link";
 import { Alert } from "@/components/others/alert";
 import { useRouter } from "next/navigation";
 import { sharePlaylist } from "@/lib/share-playlist";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 export default function PlaylistPage() {
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
@@ -40,86 +30,135 @@ export default function PlaylistPage() {
     fetchPlaylists,
     addNewPlaylist,
     deletePlaylist,
-    invalidate,
-    customCache,
-    customLoading,
-    fetchCustomPlaylists,
-    createCustomPlaylist,
-    deleteCustomPlaylist,
   } = usePlaylistStore();
 
   const [url, setUrl] = useState("");
   const [addLoading, setAddLoading] = useState(false);
-
+  const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [newPlaylistName, setNewPlaylistName] = useState("");
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
-
-  const [showCustomDialog, setShowCustomDialog] = useState(false);
-  const [customPlaylistName, setCustomPlaylistName] = useState("");
-  const [customVideoUrls, setCustomVideoUrls] = useState("");
-  const [creatingCustom, setCreatingCustom] = useState(false);
 
   const router = useRouter();
 
   const playlists = cache?.playlists || [];
-  const customPlaylists = customCache?.playlists || [];
   const lastSynced = cache?.lastSynced || null;
+  const customPlaylists = playlists.filter((p: any) => p.isCustom);
 
   useEffect(() => {
     initAuth();
   }, []);
 
   useEffect(() => {
-    if (user?.username) {
-      if (!cache && !loading) {
-        fetchPlaylists(user.username);
-      }
-      if (!customCache && !customLoading) {
-        fetchCustomPlaylists(user.username);
-      }
+    if (isAuth && !authLoading && authInitialized && user?.username) {
+      fetchPlaylists(user.username);
     }
-  }, [user?.username]);
+  }, [isAuth, authLoading, authInitialized, user?.username]);
 
-  if (!authInitialized) return null;
+  const isLoading = loading;
 
-  if (!isAuth && !authLoading) {
-    toast.info("Login to access channels.");
-    router.replace("/auth/login");
+  const extractVideoId = (urlStr: string) => {
+    if (urlStr.includes("youtu.be/")) {
+      return urlStr.split("youtu.be/")[1]?.split("?")[0];
+    }
+    if (urlStr.includes("v=")) {
+      return urlStr.split("v=")[1]?.split("&")[0];
+    }
     return null;
-  }
+  };
 
-  const handleAddVideo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url) return toast.error("Please enter a YouTube URL");
+  const handleAddVideo = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    if (!url.trim()) return toast.error("Please enter a YouTube URL");
     if (!user?.username) return toast.error("Please log in first");
+
+    const videoId = extractVideoId(url);
+    if (!videoId) return toast.error("Invalid YouTube URL");
 
     setAddLoading(true);
     try {
-      const videoId = getYouTubeVideoId(url);
-      if (!videoId) throw new Error("Invalid YouTube URL");
+      let videoData: any = {};
+      
+      try {
+        // Fetch video metadata from YouTube
+        const metaRes = await axios.get(`/api/youtube/${videoId}`);
+        const details = metaRes.data.video_details;
+        
+        if (details) {
+          const thumbnails = details.thumbnails;
+          videoData = {
+            title: details.title,
+            thumbnail: thumbnails?.medium?.url || thumbnails?.default?.url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            channelTitle: details.channelTitle,
+            publishedAt: details.publishedAt,
+          };
+        }
+      } catch (ytError) {
+        console.error("YouTube API error, using fallback:", ytError);
+      }
 
-      const { data: ytData } = await axios.get(`/api/youtube/${videoId}`);
-      const details = ytData.video_details;
+      // Use fallback if no data from API
+      if (!videoData.title) {
+        videoData = {
+          title: `Video ${videoId}`,
+          thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+          channelTitle: "Unknown",
+          publishedAt: new Date().toISOString(),
+        };
+      }
 
-      const newVideo: IVideo = {
-        videoId: videoId,
-        title: details.title,
-        thumbnail: details.thumbnails?.maxres?.url || details.thumbnails?.high?.url || "",
-        channelTitle: details.channelTitle,
-        publishedAt: details.publishedAt || new Date().toISOString()
+      const video = {
+        videoId,
+        title: videoData.title,
+        thumbnail: videoData.thumbnail,
+        channelTitle: videoData.channelTitle,
+        publishedAt: videoData.publishedAt,
       };
 
+      // Determine channelTitle and isCustom:
+      // - If selected existing custom playlist -> use that, isCustom = true
+      // - If entered new name -> use new name, isCustom = true
+      // - If ONLY URL entered -> use video's channelTitle, isCustom = false
+      let channelToUse: string;
+      let isCustom = false;
+      
+      if (selectedPlaylist) {
+        channelToUse = selectedPlaylist;
+        const existing = playlists.find((p: any) => p.channelTitle === selectedPlaylist);
+        isCustom = (existing as any)?.isCustom ?? true;
+      } else if (newPlaylistName.trim()) {
+        channelToUse = newPlaylistName.trim();
+        isCustom = true;
+      } else {
+        // Use video's channel title (creates playlist by channel)
+        channelToUse = videoData.channelTitle;
+        isCustom = false;
+      }
+
+      // Add to playlist via correct endpoint
       const { data } = await axios.post("/api/playlists", {
         username: user.username,
-        channelTitle: details.channelTitle,
-        video: newVideo,
+        channelTitle: channelToUse,
+        isCustom,
+        video
       });
 
-      addNewPlaylist(data.playlist);
-      toast.success("Video added to playlist!");
+      if (data.playlist) {
+        addNewPlaylist(data.playlist);
+        toast.success(`Video added to ${channelToUse}`);
+      }
       setUrl("");
+      setSelectedPlaylist("");
+      setNewPlaylistName("");
     } catch (error: unknown) {
-      toast.error(error instanceof AxiosError ? error.response?.data.message : "Failed to add video");
+      if (error instanceof AxiosError && error.response?.status === 400) {
+        toast.error("Video already exists in this playlist");
+      } else if (error instanceof AxiosError && error.response?.status === 404) {
+        toast.error("Video not found on YouTube");
+      } else {
+        toast.error("Failed to add video");
+      }
     } finally {
       setAddLoading(false);
     }
@@ -132,15 +171,6 @@ export default function PlaylistPage() {
       toast.success("Playlist deleted successfully");
     } catch (error) {
       toast.error("Failed to delete playlist");
-    }
-  };
-
-  const handleDeleteCustomPlaylist = async (playlistId: string) => {
-    try {
-      await deleteCustomPlaylist(playlistId);
-      toast.success("Custom playlist deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete custom playlist");
     }
   };
 
@@ -162,36 +192,6 @@ export default function PlaylistPage() {
     }
   };
 
-  const handleCreateCustomPlaylist = async () => {
-    if (!customPlaylistName.trim()) return toast.error("Please enter a playlist name");
-    if (!customVideoUrls.trim()) return toast.error("Please enter at least one YouTube URL");
-    if (!user?.username) return toast.error("Please log in first");
-
-    const urls = customVideoUrls
-      .split(/[\n,]/)
-      .map(url => url.trim())
-      .filter(url => url.length > 0);
-
-    if (urls.length === 0) return toast.error("No valid URLs found");
-
-    setCreatingCustom(true);
-    try {
-      await createCustomPlaylist({
-        username: user.username,
-        playlistName: customPlaylistName.trim(),
-        videoUrls: urls,
-      });
-      toast.success("Custom playlist created successfully!");
-      setShowCustomDialog(false);
-      setCustomPlaylistName("");
-      setCustomVideoUrls("");
-    } catch (error: unknown) {
-      toast.error(error instanceof AxiosError ? error.response?.data.message : "Failed to create playlist");
-    } finally {
-      setCreatingCustom(false);
-    }
-  };
-
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
@@ -202,8 +202,11 @@ export default function PlaylistPage() {
     });
   };
 
-  const allPlaylists = [...customPlaylists, ...playlists];
-  const isLoading = loading || customLoading;
+  if (!authInitialized) return null;
+
+  if (!isAuth && !authLoading) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -217,29 +220,54 @@ export default function PlaylistPage() {
               </span>
             )}
           </div>
-          <Button variant="outline" onClick={() => setShowCustomDialog(true)} className="gap-2">
-            <FolderPlus className="h-4 w-4" />
-            Create Custom Playlist
-          </Button>
         </div>
         <p className="text-muted-foreground text-sm">
           Manage your collections or sync latest videos from your subscriptions.
         </p>
 
         <div className="flex flex-col md:flex-row gap-6 bg-card border rounded-xl p-5 shadow-sm">
-          <form onSubmit={handleAddVideo} className="flex gap-3 flex-1">
-            <Input
-              placeholder="Paste YouTube Video URL here..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="flex-1"
-              disabled={addLoading || syncing}
-            />
-            <Button type="submit" disabled={addLoading || syncing}>
-              {addLoading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-              Add URL
-            </Button>
-          </form>
+          <div className="flex flex-col gap-3 flex-1">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Paste YouTube Video URL here..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="flex-1"
+                disabled={addLoading || syncing}
+              />
+            </div>
+            <div className="flex gap-2 flex-1">
+              <Select value={selectedPlaylist} onValueChange={(val) => {
+                setSelectedPlaylist(val);
+                setNewPlaylistName("");
+              }} disabled={addLoading || syncing}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select existing custom playlist..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {customPlaylists.map((p: any) => (
+                    <SelectItem key={p._id} value={p.channelTitle}>
+                      {p.channelTitle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Or enter new playlist name..."
+                value={newPlaylistName}
+                onChange={(e) => {
+                  setNewPlaylistName(e.target.value);
+                  setSelectedPlaylist("");
+                }}
+                disabled={addLoading || syncing}
+                className="flex-1"
+              />
+              <Button onClick={handleAddVideo} disabled={addLoading || syncing || !url.trim()}>
+                {addLoading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                Add
+              </Button>
+            </div>
+          </div>
 
           <div className="hidden md:block w-px bg-border my-2"></div>
 
@@ -265,72 +293,22 @@ export default function PlaylistPage() {
         </div>
       </div>
 
-      <Dialog open={showCustomDialog} onOpenChange={setShowCustomDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ListMusic className="h-5 w-5" />
-              Create Custom Playlist
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Playlist Name</label>
-              <Input
-                placeholder="e.g., Tech Videos Mix, Watch Later Collection..."
-                value={customPlaylistName}
-                onChange={(e) => setCustomPlaylistName(e.target.value)}
-                disabled={creatingCustom}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">YouTube URLs</label>
-              <Textarea
-                placeholder="Paste YouTube video URLs here (one per line or comma-separated)&#10;&#10;Examples:&#10;https://www.youtube.com/watch?v=abc123&#10;https://youtu.be/xyz789&#10;https://youtube.com/shorts.com/def456"
-                value={customVideoUrls}
-                onChange={(e) => setCustomVideoUrls(e.target.value)}
-                className="min-h-[150px] resize-y"
-                disabled={creatingCustom}
-              />
-              <p className="text-xs text-muted-foreground">
-                Paste multiple video URLs from any YouTube channel. Videos will be fetched and added to your custom playlist.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCustomDialog(false)} disabled={creatingCustom}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateCustomPlaylist} disabled={creatingCustom || !customPlaylistName.trim() || !customVideoUrls.trim()}>
-              {creatingCustom ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <ListMusic className="mr-2 h-4 w-4" />
-                  Create Playlist
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {isLoading ? (
         <div className="flex justify-center h-[50vh] items-center p-12"><Loader size={50} /></div>
-      ) : allPlaylists.length === 0 ? (
+      ) : playlists.length === 0 ? (
         <div className="text-center p-12 text-muted-foreground border border-dashed rounded-lg">
           No playlists yet. Add a video or sync your subscriptions to get started!
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {allPlaylists.map((playlist, idx) => {
-            const isCustom = 'playlistName' in playlist;
+          {playlists.map((playlist, idx) => {
             const latestVideo = playlist.videos[playlist.videos.length - 1];
             const playlistId = playlist._id || '';
-            const displayName = isCustom ? (playlist as any).playlistName : (playlist as any).channelTitle;
+            const isCustom = (playlist as any).isCustom;
+
+            if (playlist.videos.length === 0) {
+              return null;
+            }
 
             return (
               <div key={idx} className="group relative">
@@ -338,7 +316,7 @@ export default function PlaylistPage() {
                   <Alert
                     title="Delete Playlist"
                     description="Are you sure you want to delete this entire playlist? This action cannot be undone."
-                    onContinue={() => isCustom ? handleDeleteCustomPlaylist(playlistId) : handleDeletePlaylist(playlistId)}
+                    onContinue={() => handleDeletePlaylist(playlistId)}
                     trigger={
                       <Button
                         size="icon"
@@ -352,24 +330,21 @@ export default function PlaylistPage() {
                   />
                 </div>
 
-                {!isCustom && (
-                  <div className="absolute top-2 right-12 z-10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="h-8 w-8 hover:text-sky-600 shadow-sm"
-                      title="Share entire playlist"
-                      onClick={() => sharePlaylist((playlist as any).channelTitle, playlistId)}
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="absolute top-2 right-12 z-10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="h-8 w-8 hover:text-sky-600 shadow-sm"
+                    title="Share entire playlist"
+                    onClick={() => sharePlaylist(playlist.channelTitle, playlistId)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </div>
 
                 {isCustom && (
                   <div className="absolute top-2 left-2 z-10">
-                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                      <ListMusic className="h-3 w-3" />
+                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-medium">
                       Custom
                     </span>
                   </div>
@@ -381,7 +356,7 @@ export default function PlaylistPage() {
                       {latestVideo?.thumbnail ? (
                         <Image
                           src={latestVideo.thumbnail}
-                          alt={displayName}
+                          alt={playlist.channelTitle}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -390,24 +365,12 @@ export default function PlaylistPage() {
                           <PlaySquare className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
-                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1">
-                        <PlaySquare className="h-3 w-3" />
-                        {playlist.videos.length} videos
-                      </div>
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <h3 className="font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                          {displayName}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          View full playlist
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                        {playlist.videos.filter((v: IVideo) => v.watched).length} watched
-                      </div>
+                    <div>
+                      <h3 className="font-medium line-clamp-2">{playlist.channelTitle}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {playlist.videos.length} videos
+                      </p>
                     </div>
                   </div>
                 </Link>

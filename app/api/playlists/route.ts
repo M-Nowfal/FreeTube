@@ -1,20 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Playlist } from "@/models/playlist.model";
-import { User } from "@/models/user.model";
 import { connectDataBase } from "@/utils/connect-db";
 import { IVideo } from "@/types/playlist";
+
+function getYouTubeVideoId(url: string): string | null {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function parseDuration(duration: string): number {
+  if (!duration) return 0;
+  const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1]) || 0;
+  const minutes = parseInt(match[2]) || 0;
+  const seconds = parseInt(match[3]) || 0;
+  return hours * 3600 + minutes * 60 + seconds;
+}
 
 export async function POST(req: NextRequest) {
   try {
     await connectDataBase();
     const body = await req.json();
-    const { username, channelTitle, video } = body;
+    const { username, channelTitle, videoUrls, video, isCustom } = body;
+
+    // Handle custom playlist creation
+    if (isCustom && videoUrls && videoUrls.length > 0) {
+      if (!username || !channelTitle) {
+        return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+      }
+
+      // Fetch videos from YouTube
+      const fetchedVideos: IVideo[] = [];
+      for (const url of videoUrls) {
+        try {
+          const videoId = getYouTubeVideoId(url);
+          if (!videoId || !process.env.YOUTUBE_API_KEY) continue;
+          
+          const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${process.env.YOUTUBE_API_KEY}`);
+          const data = await res.json();
+          
+          if (data.items && data.items.length > 0) {
+            const item = data.items[0];
+            fetchedVideos.push({
+              videoId,
+              title: item.snippet.title,
+              thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "",
+              channelTitle: item.snippet.channelTitle,
+              publishedAt: item.snippet.publishedAt,
+              duration: parseDuration(item.contentDetails.duration),
+            });
+          }
+        } catch (e) {
+          console.error("Failed to fetch video:", url, e);
+        }
+      }
+
+      const playlist = await Playlist.create({
+        username,
+        channelTitle,
+        videos: fetchedVideos,
+        isCustom: true,
+      });
+
+      return NextResponse.json({ message: "Playlist created", playlist }, { status: 201 });
+    }
 
     if (!username || !channelTitle || !video) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    // Find if a playlist already exists for this user and channel
     let playlist = await Playlist.findOne({ username, channelTitle });
 
     if (playlist) {
@@ -22,16 +78,14 @@ export async function POST(req: NextRequest) {
       if (isExistingVideo) {
         return NextResponse.json({ message: "Video already added to the playlist." }, { status: 400 });
       }
-
-      // If it exists, push the new video
       playlist.videos.push(video);
       await playlist.save();
     } else {
-      // If not, create a new playlist for this channel
       playlist = await Playlist.create({
         username,
         channelTitle,
         videos: [video],
+        isCustom: isCustom || false,
       });
     }
 
