@@ -10,16 +10,9 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useTheme } from "next-themes";
-import { Bookmark, Home, LogIn, LogOut, Moon, PlaySquare, Sun } from "lucide-react";
+import { Bookmark, Home, LogIn, LogOut, PlaySquare } from "lucide-react";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ListVideo, Search, Settings } from "lucide-react";
 import { Alert } from "../others/alert";
 import { useMutate } from "@/hooks/useMutate";
@@ -27,10 +20,10 @@ import { useUserStore } from "@/store/useUserStore";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ShortsIconSimple } from "@/components/icons/shorts-icon";
 
 export function SideBar(): JSX.Element {
   const { user, setUser } = useUserStore();
-  const { theme, setTheme } = useTheme();
   const { data, error, loading, mutate } = useMutate();
   const { toggleSidebar } = useSidebar();
   const router = useRouter();
@@ -63,6 +56,7 @@ export function SideBar(): JSX.Element {
     { href: user ? "/" : "", icon: <Home />, label: "Home" },
     { href: user ? "/playlist" : "", icon: <ListVideo />, label: "PlayList" },
     { href: user ? "/channels" : "", icon: <PlaySquare />, label: "Subscriptions" },
+    { href: user ? "/shorts" : "", icon: <ShortsIconSimple size={20} />, label: "Shorts" },
     { href: user ? "/watchlater" : "", icon: <Bookmark />, label: "Watch Later" },
     { href: user ? "/search" : "", icon: <Search />, label: "Search" },
     { href: user ? "/settings" : "", icon: <Settings />, label: "Settings" },

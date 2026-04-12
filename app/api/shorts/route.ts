@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectDataBase } from "@/utils/connect-db";
+import { Short } from "@/models/short.model";
+
+export async function GET(req: NextRequest) {
+  try {
+    await connectDataBase();
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get("username");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "10", 10);
+
+    if (!username) {
+      return NextResponse.json({ message: "Username required" }, { status: 400 });
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [shorts, totalCount] = await Promise.all([
+      Short.find({ username })
+        .sort({ publishedAt: 1 })
+        .skip(skip)
+        .limit(limit),
+      Short.countDocuments({ username })
+    ]);
+
+    const shortsWithStrings = shorts.map(s => ({
+      ...s.toObject(),
+      _id: s._id.toString(),
+      updatedAt: s.updatedAt?.toISOString()
+    }));
+
+    const hasMore = skip + shorts.length < totalCount;
+
+    return NextResponse.json({
+      shorts: shortsWithStrings,
+      page,
+      limit,
+      total: totalCount,
+      hasMore
+    }, { status: 200 });
+  } catch (error: unknown) {
+    console.error(error);
+    return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await connectDataBase();
+    const body = await req.json();
+    const { action, username, shortId, videoId } = body;
+
+    if (!action || !username) {
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+
+    if (action === "like" && shortId) {
+      const short = await Short.findOne({ _id: shortId, username });
+      if (!short) {
+        return NextResponse.json({ message: "Short not found" }, { status: 404 });
+      }
+
+      short.liked = !short.liked;
+      short.likes = short.liked 
+        ? (short.likes || 0) + 1 
+        : Math.max((short.likes || 0) - 1, 0);
+      
+      await short.save();
+
+      return NextResponse.json({
+        message: short.liked ? "Liked" : "Unliked",
+        liked: short.liked,
+        likes: short.likes
+      }, { status: 200 });
+    }
+
+    if (action === "watched" && shortId) {
+      const short = await Short.findOne({ _id: shortId, username });
+      if (!short) {
+        return NextResponse.json({ message: "Short not found" }, { status: 404 });
+      }
+
+      short.watched = true;
+      await short.save();
+
+      return NextResponse.json({ message: "Marked as watched" }, { status: 200 });
+    }
+
+    return NextResponse.json({ message: "Invalid action" }, { status: 400 });
+  } catch (error: unknown) {
+    console.error(error);
+    return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
+  }
+}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ListVideo, Bookmark, Search, PlaySquare } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore";
+import { ShortsIconSimple } from "@/components/icons/shorts-icon";
 
 export default function BottomBar() {
   const pathname = usePathname();
@@ -15,6 +16,7 @@ export default function BottomBar() {
     { href: user ? "/" : "/auth/login", icon: Home, label: "Home" },
     { href: user ? "/playlist" : "/auth/login", icon: ListVideo, label: "PlayList" },
     { href: user ? "/channels" : "/auth/login", icon: PlaySquare, label: "Subscription" },
+    { href: user ? "/shorts" : "/auth/login", icon: ShortsIconSimple, label: "Shorts" },
     { href: user ? "/watchlater" : "/auth/login", icon: Bookmark, label: "Watch Later" },
     { href: user ? "/search" : "/auth/login", icon: Search, label: "Search" },
   ];
@@ -42,12 +44,21 @@ export default function BottomBar() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon 
-              className={`h-5 w-5 transition-all ${
-                isActive ? "" : "fill-transparent"
-              }`} 
-              strokeWidth={isActive ? 3 : 2} 
-            />
+            {link.label === "Shorts" ? (
+              <ShortsIconSimple 
+                className={`h-5 w-5 transition-all ${
+                  isActive ? "" : "fill-transparent"
+                }`} 
+                size={20}
+              />
+            ) : (
+              <Icon 
+                className={`h-5 w-5 transition-all ${
+                  isActive ? "" : "fill-transparent"
+                }`} 
+                strokeWidth={isActive ? 3 : 2} 
+              />
+            )}
             <span className="text-[10px]">{link.label}</span>
           </Link>
         );

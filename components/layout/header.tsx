@@ -19,6 +19,7 @@ import { Alert } from "../others/alert";
 import { useMutate } from "@/hooks/useMutate";
 import { toast } from "sonner";
 import { useUserStore } from "@/store/useUserStore";
+import { ShortsIconSimple } from "@/components/icons/shorts-icon";
 
 export function Header(): JSX.Element {
   const { isAuth, loading } = useAuth();
@@ -54,6 +55,7 @@ export function Header(): JSX.Element {
     { href: "/", icon: <Home size={20} />, label: "Home" },
     { href: "/playlist", icon: <ListVideo size={20} />, label: "PlayList" },
     { href: "/channels", icon: <PlaySquare size={20} />, label: "Subscription" },
+    { href: "/shorts", icon: <ShortsIconSimple size={20} />, label: "Shorts", isCustom: true },
     { href: "/watchlater", icon: <Bookmark size={20} />, label: "Watch Later" },
     { href: "/search", icon: <Search size={20} />, label: "Search" },
     { href: "/settings", icon: <Settings size={20} />, label: "Settings" }
@@ -85,7 +87,13 @@ export function Header(): JSX.Element {
               <Tooltip key={link.label}>
                 <TooltipTrigger asChild>
                   <Link href={link.href} className="flex items-center gap-1 bg-accent p-2 md:py-1 md:px-3 rounded-full">
-                    {link.icon} <span className="hidden lg:inline-block text-sm">{link.label}</span>
+                    {'isCustom' in link && link.isCustom ? (
+                      <span className="flex items-center gap-1">
+                        {link.icon} <span className="hidden lg:inline-block text-sm">{link.label}</span>
+                      </span>
+                    ) : (
+                      <> {link.icon} <span className="hidden lg:inline-block text-sm">{link.label}</span></>
+                    )}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent>

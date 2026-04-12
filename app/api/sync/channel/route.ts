@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { Playlist } from "@/models/playlist.model";
+import { Short } from "@/models/short.model";
 import axios from "axios";
 import { YOUTUBE_API_KEY } from "@/utils/constants";
+import { parseDuration, isYouTubeShort } from "@/utils/helper";
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     let totalAdded = 0;
+    let shortsAdded = 0;
 
     const searchParams: any = {
       part: "snippet",
@@ -78,6 +81,31 @@ export async function POST(req: NextRequest) {
     const items = ytRes.data.items;
 
     if (items && items.length > 0) {
+      const videoIds = items.map((item: { id: { videoId: string } }) => item.id.videoId);
+
+      const detailsMap: Record<string, { duration: number; views: number; likes: number; channelThumbnail: string }> = {};
+      
+      try {
+        const detailsRes = await axios.get("https://www.googleapis.com/youtube/v3/videos", {
+          params: {
+            part: "contentDetails,snippet,statistics",
+            id: videoIds.join(","),
+            key: YOUTUBE_API_KEY,
+          },
+        });
+
+        for (const item of detailsRes.data.items) {
+          detailsMap[item.id] = {
+            duration: parseDuration(item.contentDetails?.duration || ""),
+            views: parseInt(item.statistics?.viewCount || "0", 10),
+            likes: parseInt(item.statistics?.likeCount || "0", 10),
+            channelThumbnail: item.snippet?.thumbnails?.default?.url || "",
+          };
+        }
+      } catch (detailsError) {
+        console.error("Error fetching video details:", detailsError);
+      }
+
       let playlist = await Playlist.findOne({ username, channelTitle });
 
       if (!playlist) {
@@ -86,25 +114,59 @@ export async function POST(req: NextRequest) {
 
       for (const item of items) {
         const videoId = item.id.videoId;
-        const exists = playlist.videos.some((v: any) => v.videoId === videoId);
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const details = detailsMap[videoId] || { duration: 0, views: 0, likes: 0, channelThumbnail: "" };
+        const isShort = isYouTubeShort(videoUrl, details.duration);
 
-        if (!exists) {
-          playlist.videos.push({
-            videoId,
-            title: item.snippet.title,
-            thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "",
-            channelTitle: item.snippet.channelTitle,
-            publishedAt: item.snippet.publishedAt,
-            watched: false
-          });
-          totalAdded++;
+        if (isShort) {
+          const existingShort = await Short.findOne({ username, videoId });
+          
+          if (!existingShort) {
+            await Short.findOneAndUpdate(
+              { username, videoId },
+              {
+                $setOnInsert: {
+                  username,
+                  channelId,
+                  channelTitle: item.snippet.channelTitle,
+                  channelThumbnail: details.channelThumbnail,
+                  videoId,
+                  title: item.snippet.title,
+                  thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "",
+                  publishedAt: item.snippet.publishedAt,
+                  duration: details.duration,
+                  views: details.views,
+                  likes: details.likes,
+                }
+              },
+              { upsert: true }
+            );
+            shortsAdded++;
+          }
+        } else {
+          const exists = playlist.videos.some((v: { videoId: string }) => v.videoId === videoId);
+
+          if (!exists) {
+            playlist.videos.push({
+              videoId,
+              title: item.snippet.title,
+              thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "",
+              channelTitle: item.snippet.channelTitle,
+              publishedAt: item.snippet.publishedAt,
+              watched: false,
+              duration: details.duration,
+            });
+            totalAdded++;
+          }
         }
       }
 
       await playlist.save();
     }
 
-    return NextResponse.json({ message: `Sync complete. Added ${totalAdded} new videos.` }, { status: 200 });
+    return NextResponse.json({ 
+      message: `Sync complete. Added ${totalAdded} new videos and ${shortsAdded} shorts.` 
+    }, { status: 200 });
   } catch (error: unknown) {
     console.error("Single channel sync error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

@@ -5,6 +5,7 @@ export interface IVideo {
   channelTitle: string;
   publishedAt: string;
   watched?: boolean;
+  duration?: number;
 }
 
 export interface IPlaylist {

@@ -13,7 +13,8 @@ const VideoSchema = new Schema<IVideo>({
   thumbnail: { type: String, required: true },
   channelTitle: { type: String, required: true },
   publishedAt: { type: String },
-  watched: { type: Boolean, default: false }
+  watched: { type: Boolean, default: false },
+  duration: { type: Number }
 });
 
 const PlaylistSchema = new Schema<IPlaylist>({
