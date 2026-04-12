@@ -10,15 +10,18 @@ import { toast } from "sonner";
 interface ShortCardProps {
   short: IShort;
   isActive: boolean;
+  isPreload?: boolean;
   onLike: (shortId: string) => void;
   onWatchLater: (short: IShort) => void;
 }
 
-export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardProps) {
+export function ShortCard({ short, isActive, isPreload, onLike, onWatchLater }: ShortCardProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const subscriptions = useSubscriptionsStore((state) => state.channels);
   const subscription = subscriptions.find((sub) => sub.channelId === short.channelId);
   const channelLogo = subscription?.thumbnail || short.channelThumbnail;
+
+  const preloadSrc = `https://www.youtube.com/embed/${short.videoId}?autoplay=1&loop=1&playlist=${short.videoId}&playsinline=1&controls=1`;
 
   const handleShare = async () => {
     const shareUrl = `https://youtube.com/shorts/${short.videoId}`;
@@ -74,11 +77,11 @@ export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardPr
 
   return (
     <div className="relative w-full h-[89vh] sm:h-[92vh] md:h-[95vh]">
-      {isActive ? (
+      {isActive || isPreload ? (
         <iframe
           ref={iframeRef}
-          src={`https://www.youtube.com/embed/${short.videoId}?autoplay=1&loop=1&playlist=${short.videoId}&playsinline=1&controls=1`}
-          className="w-full h-full"
+          src={isActive ? preloadSrc : preloadSrc.replace("autoplay=1", "autoplay=0")}
+          className={`w-full h-full ${isPreload ? "pointer-events-none invisible" : ""}`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />

@@ -170,6 +170,7 @@ export default function ShortsPage() {
               <ShortCard
                 short={short}
                 isActive={index === currentIndex}
+                isPreload={index === currentIndex + 1 || index === currentIndex - 1}
                 onLike={handleLike}
                 onWatchLater={handleWatchLater}
               />

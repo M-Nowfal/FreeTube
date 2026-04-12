@@ -100,6 +100,13 @@ export const useShortsStore = create<ShortsState>((set, get) => ({
 
   setCurrentIndex: (index: number) => {
     set({ currentIndex: index });
+    
+    const { shorts, hasMore, loading, username, fetchShorts } = get();
+    if (!username || loading || !hasMore) return;
+    
+    if (index >= shorts.length - 3) {
+      fetchShorts(username);
+    }
   },
 
   invalidate: () => {
