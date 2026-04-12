@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import { Heart, Share2, Bookmark, Play } from "lucide-react";
 import { IShort } from "@/types/short";
+import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { toast } from "sonner";
 
 interface ShortCardProps {
@@ -15,6 +16,9 @@ interface ShortCardProps {
 
 export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const subscriptions = useSubscriptionsStore((state) => state.channels);
+  const subscription = subscriptions.find((sub) => sub.channelId === short.channelId);
+  const channelLogo = subscription?.thumbnail || short.channelThumbnail;
 
   const handleShare = async () => {
     const shareUrl = `https://youtube.com/shorts/${short.videoId}`;
@@ -96,9 +100,9 @@ export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardPr
       <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/90 via-black/50 to-transparent p-4 pt-20">
           <div className="flex items-start gap-3">
-            {short.channelThumbnail && (
+            {channelLogo && (
               <Image
-                src={short.channelThumbnail}
+                src={channelLogo}
                 alt={short.channelTitle}
                 width={40}
                 height={40}
