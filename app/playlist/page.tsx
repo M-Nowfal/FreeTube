@@ -71,7 +71,7 @@ export default function PlaylistPage() {
 
   const handleAddVideo = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
+
     if (!url.trim()) return toast.error("Please enter a YouTube URL");
     if (!user?.username) return toast.error("Please log in first");
 
@@ -81,12 +81,12 @@ export default function PlaylistPage() {
     setAddLoading(true);
     try {
       let videoData: any = {};
-      
+
       try {
         // Fetch video metadata from YouTube
         const metaRes = await axios.get(`/api/youtube/${videoId}`);
         const details = metaRes.data.video_details;
-        
+
         if (details) {
           const thumbnails = details.thumbnails;
           videoData = {
@@ -124,7 +124,7 @@ export default function PlaylistPage() {
       // - If ONLY URL entered -> use video's channelTitle, isCustom = false
       let channelToUse: string;
       let isCustom = false;
-      
+
       if (selectedPlaylist) {
         channelToUse = selectedPlaylist;
         const existing = playlists.find((p: any) => p.channelTitle === selectedPlaylist);
@@ -186,7 +186,7 @@ export default function PlaylistPage() {
         timeframe: timeframe
       });
       toast.success(data.message);
-      
+
       // Force refresh all data after successful sync
       fetchPlaylists(user.username, true);
       fetchSubscriptions(user.username, true);
@@ -241,12 +241,13 @@ export default function PlaylistPage() {
                 disabled={addLoading || syncing}
               />
             </div>
-            <div className="flex gap-2 flex-1">
+            {/* --- Modified Section Start --- */}
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
               <Select value={selectedPlaylist} onValueChange={(val) => {
                 setSelectedPlaylist(val);
                 setNewPlaylistName("");
               }} disabled={addLoading || syncing}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[250px]">
                   <SelectValue placeholder="Select existing custom playlist..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -257,21 +258,24 @@ export default function PlaylistPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                placeholder="Or enter new playlist name..."
-                value={newPlaylistName}
-                onChange={(e) => {
-                  setNewPlaylistName(e.target.value);
-                  setSelectedPlaylist("");
-                }}
-                disabled={addLoading || syncing}
-                className="flex-1"
-              />
-              <Button onClick={handleAddVideo} disabled={addLoading || syncing || !url.trim()}>
-                {addLoading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                Add
-              </Button>
+              <div className="flex gap-2 flex-1">
+                <Input
+                  placeholder="Or enter new playlist name..."
+                  value={newPlaylistName}
+                  onChange={(e) => {
+                    setNewPlaylistName(e.target.value);
+                    setSelectedPlaylist("");
+                  }}
+                  disabled={addLoading || syncing}
+                  className="flex-1"
+                />
+                <Button onClick={handleAddVideo} disabled={addLoading || syncing || !url.trim()}>
+                  {addLoading ? <Loader className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Add
+                </Button>
+              </div>
             </div>
+            {/* --- Modified Section End --- */}
           </div>
 
           <div className="hidden md:block w-px bg-border my-2"></div>
