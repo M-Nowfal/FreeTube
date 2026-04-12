@@ -10,12 +10,11 @@ import { toast } from "sonner";
 interface ShortCardProps {
   short: IShort;
   isActive: boolean;
-  isPreload?: boolean;
   onLike: (shortId: string) => void;
   onWatchLater: (short: IShort) => void;
 }
 
-export function ShortCard({ short, isActive, isPreload, onLike, onWatchLater }: ShortCardProps) {
+export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const subscriptions = useSubscriptionsStore((state) => state.channels);
   const subscription = subscriptions.find((sub) => sub.channelId === short.channelId);
@@ -77,12 +76,13 @@ export function ShortCard({ short, isActive, isPreload, onLike, onWatchLater }: 
 
   return (
     <div className="relative w-full h-[89vh] sm:h-[92vh] md:h-[95vh]">
-      {isActive || isPreload ? (
+      {isActive ? (
         <iframe
           ref={iframeRef}
-          src={isActive ? preloadSrc : preloadSrc.replace("autoplay=1", "autoplay=0")}
-          className={`w-full h-full ${isPreload ? "pointer-events-none invisible" : ""}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          key={short.videoId}
+          src={preloadSrc}
+          className="w-full h-full"
+          allow="autoplay; encrypted-media"
           allowFullScreen
         />
       ) : (

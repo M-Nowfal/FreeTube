@@ -13,7 +13,6 @@ import axios from "axios";
 
 export default function ShortsPage() {
   const router = useRouter();
-  const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const {
     shorts,
     currentIndex,
@@ -27,9 +26,11 @@ export default function ShortsPage() {
 
   const loadingSentinel = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
 
   useEffect(() => {
     initAuth();
+    history.scrollRestoration = "manual";
   }, []);
 
   useEffect(() => {
@@ -70,13 +71,14 @@ export default function ShortsPage() {
 
   const handleShortChange = useCallback((index: number) => {
     setCurrentIndex(index);
+    history.replaceState(null, "", "/shorts");
     
     if (shorts[index] && !shorts[index].watched) {
       markWatched(shorts[index]._id!);
     }
   }, [setCurrentIndex, shorts, markWatched]);
 
-  useEffect(() => {
+useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -95,25 +97,19 @@ export default function ShortsPage() {
   }, [shorts.length, currentIndex, handleShortChange]);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && user?.username) {
-          fetchShorts(user.username);
-        }
-      },
-      { rootMargin: "500px" }
-    );
+    const channelsUrl = "/channels";
+    let ignorePopState = false;
 
-    if (loadingSentinel.current) {
-      observer.observe(loadingSentinel.current);
-    }
+    const navigateToChannels = () => {
+      if (ignorePopState) return;
+      ignorePopState = true;
+      window.location.href = channelsUrl;
+    };
 
-    return () => observer.disconnect();
-  }, [hasMore, loading, user?.username, fetchShorts]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp" && currentIndex > 0) {
+      if (e.key === "Escape") {
+        navigateToChannels();
+      } else if (e.key === "ArrowUp" && currentIndex > 0) {
         const container = containerRef.current;
         if (container) {
           const itemHeight = container.scrollHeight / shorts.length;
@@ -134,8 +130,21 @@ export default function ShortsPage() {
       }
     };
 
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      if (!ignorePopState) {
+        ignorePopState = true;
+        window.location.href = channelsUrl;
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("popstate", handlePopState, { capture: true });
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("popstate", handlePopState, { capture: true });
+    };
   }, [currentIndex, shorts.length]);
 
   if (!authInitialized) return null;
@@ -170,7 +179,6 @@ export default function ShortsPage() {
               <ShortCard
                 short={short}
                 isActive={index === currentIndex}
-                isPreload={index === currentIndex + 1 || index === currentIndex - 1}
                 onLike={handleLike}
                 onWatchLater={handleWatchLater}
               />
