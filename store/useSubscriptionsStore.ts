@@ -15,7 +15,7 @@ interface SubscriptionsState {
   error: string | null;
   lastFetched: number | null;
   lastSynced: string | null;
-  fetchSubscriptions: (username: string) => Promise<void>;
+  fetchSubscriptions: (username: string, force?: boolean) => Promise<void>;
   addChannel: (channel: IChannel) => void;
   removeChannel: (channelId: string) => void;
   invalidate: () => void;
@@ -28,7 +28,17 @@ export const useSubscriptionsStore = create<SubscriptionsState>((set, get) => ({
   lastFetched: null,
   lastSynced: null,
 
-  fetchSubscriptions: async (username: string) => {
+  fetchSubscriptions: async (username: string, force = false) => {
+    const { loading, channels, lastFetched } = get();
+    
+    // Skip if already loading
+    if (loading) return;
+    
+    // Skip if we have valid cache for this username and not forcing refresh
+    if (!force && channels.length > 0 && lastFetched) {
+      return;
+    }
+    
     set({ loading: true, error: null });
     try {
       const res = await fetch(`/api/subscriptions?username=${username}`);

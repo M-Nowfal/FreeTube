@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
+import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import Image from "next/image";
 import { PlaySquare, Plus, Trash2, RefreshCw, Share2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
@@ -31,6 +32,7 @@ export default function PlaylistPage() {
     addNewPlaylist,
     deletePlaylist,
   } = usePlaylistStore();
+  const { fetchSubscriptions } = useSubscriptionsStore();
 
   const [url, setUrl] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -184,7 +186,10 @@ export default function PlaylistPage() {
         timeframe: timeframe
       });
       toast.success(data.message);
-      fetchPlaylists(user.username);
+      
+      // Force refresh all data after successful sync
+      fetchPlaylists(user.username, true);
+      fetchSubscriptions(user.username, true);
     } catch (error: unknown) {
       toast.error(error instanceof AxiosError ? error.response?.data?.message || "Sync failed" : "Sync failed");
     } finally {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { User } from "@/models/user.model";
 import { Playlist } from "@/models/playlist.model";
+import { Short } from "@/models/short.model";
 
 // Fetch user's subscriptions
 export async function GET(req: NextRequest) {
@@ -22,6 +23,8 @@ export async function GET(req: NextRequest) {
     const subscriptions = user.subscriptions || [];
 
     const playlists = await Playlist.find({ username });
+    const shorts = await Short.find({ username });
+
     const playlistMap = new Map<string, { totalVideos: number; watchedVideos: number }>();
 
     for (const playlist of playlists) {
@@ -30,12 +33,24 @@ export async function GET(req: NextRequest) {
       playlistMap.set(playlist.channelTitle.toLowerCase(), { totalVideos, watchedVideos });
     }
 
+    // Add shorts counts per channelId
+    const shortCountsByChannelId = new Map<string, { totalShorts: number; watchedShorts: number }>();
+    for (const short of shorts) {
+      const current = shortCountsByChannelId.get(short.channelId) || { totalShorts: 0, watchedShorts: 0 };
+      shortCountsByChannelId.set(short.channelId, {
+        totalShorts: current.totalShorts + 1,
+        watchedShorts: current.watchedShorts + (short.watched ? 1 : 0),
+      });
+    }
+
     const subscriptionsWithCounts = subscriptions.map((sub: any) => {
-      const counts = playlistMap.get(sub.title.toLowerCase()) || { totalVideos: 0, watchedVideos: 0 };
+      const channelTitleLower = sub.title.toLowerCase();
+      const playlistCounts = playlistMap.get(channelTitleLower) || { totalVideos: 0, watchedVideos: 0 };
+      const shortCounts = shortCountsByChannelId.get(sub.channelId) || { totalShorts: 0, watchedShorts: 0 };
       return {
         ...sub.toObject ? sub.toObject() : sub,
-        totalVideos: counts.totalVideos,
-        watchedVideos: counts.watchedVideos,
+        totalVideos: playlistCounts.totalVideos + shortCounts.totalShorts,
+        watchedVideos: playlistCounts.watchedVideos + shortCounts.watchedShorts,
       };
     });
 

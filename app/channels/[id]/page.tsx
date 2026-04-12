@@ -3,15 +3,18 @@
 import { useEffect, useState, use, useMemo } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useChannelStore } from "@/store/useChannelStore";
+import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X } from "lucide-react";
+import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IVideo } from "@/types/playlist";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
+import { Alert } from "@/components/others/alert";
 
 interface IChannelInfo {
   channelId: string;
@@ -58,6 +61,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
   const { user } = useUserStore();
   const { cache, loading, fetchChannel, getChannelData, updateChannelVideos, invalidate } = useChannelStore();
+  const { removeChannel } = useSubscriptionsStore();
 
   const [playlistUpdatedAt, setPlaylistUpdatedAt] = useState<string | null>(null);
   const [channelInfo, setChannelInfo] = useState<IChannelInfo | null>(null);
@@ -71,6 +75,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
+  const [unsubscribing, setUnsubscribing] = useState(false);
 
   useEffect(() => {
     if (user?.username && id) {
@@ -121,6 +126,24 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       toast.error(error.message || "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    if (!user?.username || !channelInfo) return toast.error("Please log in first");
+
+    setUnsubscribing(true);
+    try {
+      await axios.delete(`/api/subscriptions?username=${user.username}&channelId=${channelInfo.channelId}`);
+      removeChannel(channelInfo.channelId);
+      toast.success(`Unsubscribed from ${channelInfo.title}`);
+
+      // Navigate back to channels page
+      window.location.href = "/channels";
+    } catch (error) {
+      toast.error("Failed to unsubscribe");
+    } finally {
+      setUnsubscribing(false);
     }
   };
 
@@ -207,6 +230,23 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
               <p className="text-muted-foreground text-sm">{videos.length} videos</p>
               <span className="text-muted-foreground/50">|</span>
               <p className="text-muted-foreground text-sm">{videos.filter((v: IVideo) => v.watched).length} watched</p>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <Alert
+                trigger={
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={unsubscribing}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {unsubscribing ? "Unsubscribing..." : "Unsubscribe"}
+                  </Button>
+                }
+                title="Confirm Unsubscribe"
+                description={`Are you sure you want to unsubscribe from "${channelInfo.title}"? This will also delete all synced videos.`}
+                onContinue={handleUnsubscribe}
+              />
             </div>
           </div>
         </div>

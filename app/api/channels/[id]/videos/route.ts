@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDataBase } from "@/utils/connect-db";
 import { Playlist } from "@/models/playlist.model";
+import { Short } from "@/models/short.model";
 import { User } from "@/models/user.model";
 
 type Params = { params: Promise<{ id: string }> };
@@ -31,11 +32,28 @@ export async function GET(req: NextRequest, { params }: Params) {
     // 2. Fetch the playlist that matches this channel title
     const playlist = await Playlist.findOne({ username, channelTitle });
 
+    // 3. Fetch shorts from this channel
+    const shorts = await Short.find({ username, channelId: id }).sort({ publishedAt: -1 });
+
+    // Convert shorts to video format and combine with playlist videos
+    const shortVideos = shorts.map((short: any) => ({
+      videoId: short.videoId,
+      title: short.title,
+      thumbnail: short.thumbnail,
+      channelTitle: short.channelTitle,
+      publishedAt: short.publishedAt,
+      duration: short.duration,
+      watched: short.watched,
+    }));
+
+    // Combine playlist videos with shorts
+    const allVideos = [...(playlist?.videos || []), ...shortVideos];
+
     const playlistUpdatedAt = playlist?.updatedAt ? playlist.updatedAt.toISOString() : null;
 
     return NextResponse.json({
       channelInfo: subscription || { channelId: id, title: channelTitle },
-      videos: playlist ? playlist.videos : [],
+      videos: allVideos,
       playlistUpdatedAt
     }, { status: 200 });
 

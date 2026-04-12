@@ -21,6 +21,7 @@ import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { useChannelStore } from "@/store/useChannelStore";
 import { AxiosError } from "axios";
 import Link from "next/link";
+import { Alert } from "@/components/others/alert";
 
 interface IChannel {
   channelId: string;
@@ -277,14 +278,14 @@ export default function SearchChannelsPage() {
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Timeframe" />
               </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last">From Last Video</SelectItem>
-                  <SelectItem value="1h">Past Hour</SelectItem>
-                  <SelectItem value="1d">Past Day</SelectItem>
-                  <SelectItem value="1w">Past Week</SelectItem>
-                  <SelectItem value="1m">Past Month</SelectItem>
-                  <SelectItem value="1y">Past Year</SelectItem>
-                </SelectContent>
+              <SelectContent>
+                <SelectItem value="last">From Last Video</SelectItem>
+                <SelectItem value="1h">Past Hour</SelectItem>
+                <SelectItem value="1d">Past Day</SelectItem>
+                <SelectItem value="1w">Past Week</SelectItem>
+                <SelectItem value="1m">Past Month</SelectItem>
+                <SelectItem value="1y">Past Year</SelectItem>
+              </SelectContent>
             </Select>
             <Button variant="secondary" onClick={handleSync} disabled={syncing}>
               {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -337,19 +338,25 @@ export default function SearchChannelsPage() {
                       YouTube
                     </Link>
                   </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleUnsubscribe(channel.channelId, channel.title)}
-                    disabled={unsubscribingIds.has(channel.channelId)}
-                  >
-                    {unsubscribingIds.has(channel.channelId) ? (
-                      <Loader />
-                    ) : (
-                      <>
-                        <UserMinus className="h-4 w-4 mr-2" /> Unsubscribe
-                      </>
-                    )}
-                  </Button>
+                  <Alert
+                    trigger={
+                      <Button
+                        variant="destructive"
+                        disabled={unsubscribingIds.has(channel.channelId)}
+                      >
+                        {unsubscribingIds.has(channel.channelId) ? (
+                          <Loader />
+                        ) : (
+                          <>
+                            <UserMinus className="h-4 w-4 mr-2" /> Unsubscribe
+                          </>
+                        )}
+                      </Button>
+                    }
+                    title="Confirm Unsubscribe"
+                    description={`Are you sure you want to unsubscribe from "${channel.title}"? This will also delete all synced videos.`}
+                    onContinue={() => handleUnsubscribe(channel.channelId, channel.title)}
+                  />
                 </CardContent>
               </Card>
             ))}
