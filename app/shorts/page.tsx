@@ -47,6 +47,31 @@ export default function ShortsPage() {
     }
   }, [authInitialized, isAuth, authLoading, user?.username]);
 
+  // Effect to navigate to first unwatched short after shorts are loaded
+  useEffect(() => {
+    if (shorts.length === 0 || currentIndex !== 0) return;
+    
+    const unwatchedIndex = shorts.findIndex((s: IShort) => !s.watched);
+    const container = containerRef.current;
+    if (!container || shorts.length === 0) return;
+    
+    const itemHeight = container.scrollHeight / shorts.length;
+    
+    if (unwatchedIndex !== -1 && unwatchedIndex > 0) {
+      container.scrollTo({
+        top: unwatchedIndex * itemHeight,
+        behavior: "smooth",
+      });
+    } else if (unwatchedIndex === -1 && shorts.length > 0) {
+      // All watched, go to first
+      toast.info("All shorts are watched");
+      container.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [shorts.length]);
+
   const handleLike = useCallback(async (shortId: string) => {
     await likeShort(shortId);
   }, [likeShort]);
