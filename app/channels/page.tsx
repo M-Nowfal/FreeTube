@@ -35,7 +35,7 @@ interface IChannel {
 export default function SearchChannelsPage() {
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const { channels: subscribedChannels, loading: fetchingSubs, fetchSubscriptions, addChannel, removeChannel, lastSynced } = useSubscriptionsStore();
-  const { invalidateAll: invalidateChannelCache } = useChannelStore();
+  const { removeShortsFromAllChannels, removeVideosFromAllChannels, invalidateAll: invalidateChannelCache } = useChannelStore();
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<IChannel[]>([]);
@@ -96,7 +96,7 @@ export default function SearchChannelsPage() {
     try {
       const res = await axios.delete(`/api/shorts?username=${user.username}`);
       toast.success(res.data.message || "All shorts deleted");
-      invalidateChannelCache();
+      removeShortsFromAllChannels();
       fetchSubscriptions(user.username);
     } catch {
       toast.error("Failed to delete shorts");
@@ -112,7 +112,7 @@ export default function SearchChannelsPage() {
     try {
       const res = await axios.delete(`/api/playlists?username=${user.username}`);
       toast.success(res.data.message || "All videos deleted");
-      invalidateChannelCache();
+      removeVideosFromAllChannels();
       fetchSubscriptions(user.username);
     } catch {
       toast.error("Failed to delete videos");

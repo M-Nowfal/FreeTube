@@ -11,7 +11,7 @@ import { useShortsStore } from "@/store/useShortsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 export default function ShortsPage() {
@@ -34,8 +34,26 @@ export default function ShortsPage() {
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
 
-  const isAtLastShort = !hasMore && shorts.length > 0 && currentIndex >= shorts.length - 1;
+  const handleGoBack = useCallback(() => {
+    setShowDeleteOverlay(false);
+    const container = containerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: (shorts.length - 1) * (container.scrollHeight / shorts.length),
+        behavior: "smooth",
+      });
+    }
+  }, [shorts.length]);
+
+  // Reset state when shorts are refreshed/deleted
+  useEffect(() => {
+    if (shorts.length === 0) {
+      setShowDeleteOverlay(false);
+      setHasReachedEnd(false);
+    }
+  }, [shorts.length]);
 
   const handleDeleteAllShorts = useCallback(async () => {
     if (!user?.username) return;
@@ -53,12 +71,6 @@ export default function ShortsPage() {
       setDeleting(false);
     }
   }, [user, invalidate, fetchShorts]);
-
-  useEffect(() => {
-    if (isAtLastShort) {
-      setShowDeleteOverlay(true);
-    }
-  }, [isAtLastShort]);
 
   useEffect(() => {
     initAuth();
@@ -147,11 +159,18 @@ useEffect(() => {
       if (newIndex !== currentIndex && newIndex >= 0 && newIndex < shorts.length) {
         handleShortChange(newIndex);
       }
+
+      // Check if user has reached the end (last short)
+      const atLastShort = newIndex >= shorts.length - 1 && !hasMore;
+      if (atLastShort && !showDeleteOverlay) {
+        setHasReachedEnd(true);
+        setShowDeleteOverlay(true);
+      }
     };
 
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [shorts.length, currentIndex, handleShortChange]);
+  }, [shorts.length, currentIndex, handleShortChange, hasMore, showDeleteOverlay]);
 
   useEffect(() => {
     const channelsUrl = "/channels";
@@ -223,7 +242,15 @@ useEffect(() => {
           <p className="text-sm mt-2">Sync your subscriptions to see Shorts here</p>
         </div>
       ) : showDeleteOverlay && shorts.length > 0 ? (
-        <div className="h-full w-full flex items-center justify-center">
+        <div className="h-full w-full flex flex-col items-center justify-center">
+          <Button
+            variant="ghost"
+            onClick={handleGoBack}
+            className="absolute top-4 left-4 gap-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Back
+          </Button>
           <div className="flex flex-col items-center gap-6">
             <ShortsIcon size={80} className="opacity-30" />
             <Alert

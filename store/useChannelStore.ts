@@ -23,6 +23,8 @@ interface ChannelState {
   getChannelData: (channelId: string) => ChannelCacheEntry | undefined;
   updateChannelVideos: (channelId: string, videos: IVideo[]) => void;
   markVideoWatched: (channelId: string, videoId: string) => void;
+  removeShortsFromAllChannels: () => void;
+  removeVideosFromAllChannels: () => void;
   invalidate: (channelId: string) => void;
   invalidateAll: () => void;
 }
@@ -104,5 +106,36 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
 
   invalidateAll: () => {
     set({ cache: {} });
+  },
+
+  removeShortsFromAllChannels: () => {
+    set((state) => {
+      const newCache: Record<string, ChannelCacheEntry> = {};
+      for (const channelId of Object.keys(state.cache)) {
+        const entry = state.cache[channelId];
+        newCache[channelId] = {
+          ...entry,
+          videos: entry.videos.filter((v: any) => {
+            const duration = (v as any).duration || 0;
+            return duration === 0 || duration >= 60;
+          }),
+        };
+      }
+      return { cache: newCache };
+    });
+  },
+
+  removeVideosFromAllChannels: () => {
+    set((state) => {
+      const newCache: Record<string, ChannelCacheEntry> = {};
+      for (const channelId of Object.keys(state.cache)) {
+        const entry = state.cache[channelId];
+        newCache[channelId] = {
+          ...entry,
+          videos: [],
+        };
+      }
+      return { cache: newCache };
+    });
   },
 }));
