@@ -133,6 +133,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ message: "All videos deleted from playlist" }, { status: 200 });
     }
 
+    // Delete all shorts for a user (global delete)
+    if (username && !shortId && !channelId && !videoId && !channelTitle) {
+      const result = await Short.deleteMany({ username });
+      return NextResponse.json({ message: `${result.deletedCount} shorts deleted` }, { status: 200 });
+    }
+
     return NextResponse.json({ message: "Missing required parameters" }, { status: 400 });
   } catch (error: unknown) {
     console.error(error);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, ExternalLink, UserPlus, UserMinus, RefreshCw } from "lucide-react";
+import { Search, ExternalLink, UserPlus, UserMinus, RefreshCw, Scissors, Trash2 } from "lucide-react";
 import axios from "axios";
 import {
   Select,
@@ -47,6 +47,8 @@ export default function SearchChannelsPage() {
 
   const [timeframe, setTimeframe] = useState("1d");
   const [syncing, setSyncing] = useState(false);
+  const [deletingShorts, setDeletingShorts] = useState(false);
+  const [deletingVideos, setDeletingVideos] = useState(false);
 
   const router = useRouter();
 
@@ -84,6 +86,38 @@ export default function SearchChannelsPage() {
       toast.error("Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleDeleteAllShorts = async () => {
+    if (!user?.username) return;
+
+    setDeletingShorts(true);
+    try {
+      const res = await axios.delete(`/api/shorts?username=${user.username}`);
+      toast.success(res.data.message || "All shorts deleted");
+      invalidateChannelCache();
+      fetchSubscriptions(user.username);
+    } catch {
+      toast.error("Failed to delete shorts");
+    } finally {
+      setDeletingShorts(false);
+    }
+  };
+
+  const handleDeleteAllVideos = async () => {
+    if (!user?.username) return;
+
+    setDeletingVideos(true);
+    try {
+      const res = await axios.delete(`/api/playlists?username=${user.username}`);
+      toast.success(res.data.message || "All videos deleted");
+      invalidateChannelCache();
+      fetchSubscriptions(user.username);
+    } catch {
+      toast.error("Failed to delete videos");
+    } finally {
+      setDeletingVideos(false);
     }
   };
 
@@ -264,7 +298,7 @@ export default function SearchChannelsPage() {
       <div className="w-full h-px bg-border my-8"></div>
 
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold tracking-tight">Your Subscriptions</h2>
             {lastSynced && (
@@ -273,24 +307,52 @@ export default function SearchChannelsPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Timeframe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="last">From Last Video</SelectItem>
-                <SelectItem value="1h">Past Hour</SelectItem>
-                <SelectItem value="1d">Past Day</SelectItem>
-                <SelectItem value="1w">Past Week</SelectItem>
-                <SelectItem value="1m">Past Month</SelectItem>
-                <SelectItem value="1y">Past Year</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
-              {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              Sync Subs
-            </Button>
+          <div className="flex flex-col lg:flex-row gap-2 justify-end">
+            <div className="flex items-center gap-3">
+              <Select value={timeframe} onValueChange={setTimeframe} disabled={syncing}>
+                <SelectTrigger className="not-sm:w-2/4 w-32">
+                  <SelectValue placeholder="Timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="last">From Last Video</SelectItem>
+                  <SelectItem value="1h">Past Hour</SelectItem>
+                  <SelectItem value="1d">Past Day</SelectItem>
+                  <SelectItem value="1w">Past Week</SelectItem>
+                  <SelectItem value="1m">Past Month</SelectItem>
+                  <SelectItem value="1y">Past Year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="secondary" onClick={handleSync} disabled={syncing} className="not-sm:w-2/4">
+                {syncing ? <Loader className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Sync Subs
+              </Button>
+            </div>
+            <div className="flex items-center gap-3 w-full not-sm:pe-3">
+              <Alert
+                title="Delete All Shorts?"
+                description="This will permanently delete all shorts from your library. This action cannot be undone."
+                onContinue={handleDeleteAllShorts}
+                loading={deletingShorts}
+                trigger={
+                  <Button variant="outline" disabled={deletingShorts} className="text-orange-500 border-orange-500 hover:bg-orange-50 not-sm:w-2/4">
+                    <Scissors className="h-4 w-4 mr-2" />
+                    {deletingShorts ? "Deleting..." : "Delete All Shorts"}
+                  </Button>
+                }
+              />
+              <Alert
+                title="Delete All Videos?"
+                description="This will permanently delete all videos from your library. This action cannot be undone."
+                onContinue={handleDeleteAllVideos}
+                loading={deletingVideos}
+                trigger={
+                  <Button variant="outline" disabled={deletingVideos} className="text-red-500 border-red-500 hover:bg-red-50 not-sm:w-2/4">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deletingVideos ? "Deleting..." : "Delete All Videos"}
+                  </Button>
+                }
+              />
+            </div>
           </div>
         </div>
 

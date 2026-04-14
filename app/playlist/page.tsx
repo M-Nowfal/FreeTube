@@ -247,7 +247,7 @@ export default function PlaylistPage() {
                 setSelectedPlaylist(val);
                 setNewPlaylistName("");
               }} disabled={addLoading || syncing}>
-                <SelectTrigger className="w-full sm:w-[250px]">
+                <SelectTrigger className="w-full sm:w-62.5">
                   <SelectValue placeholder="Select existing custom playlist..." />
                 </SelectTrigger>
                 <SelectContent>

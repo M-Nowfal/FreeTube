@@ -513,10 +513,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                     trigger={
                       <Button
                         variant="outline"
-                        className="absolute top-8 right-2 z-20 p-1.5 bg-black/70 hover:bg-red-600 text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        className="absolute top-8 right-2 z-20 p-1.5 bg-black/70 hover:bg-red-600/30 text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                         title={isShort ? "Delete Short" : "Delete Video"}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 text-white" />
                       </Button>
                     }
                   />

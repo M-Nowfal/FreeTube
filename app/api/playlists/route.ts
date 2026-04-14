@@ -129,3 +129,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    await connectDataBase();
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get("username");
+
+    if (!username) {
+      return NextResponse.json({ message: "Username required" }, { status: 400 });
+    }
+
+    const result = await Playlist.deleteMany({ username });
+    return NextResponse.json({ message: `${result.deletedCount} playlists deleted` }, { status: 200 });
+  } catch (error: unknown) {
+    console.error(error);
+    return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
+  }
+}

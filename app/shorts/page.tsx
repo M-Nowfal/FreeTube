@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
 import { ShortCard } from "@/components/short-card";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/others/alert";
 import { useShortsStore } from "@/store/useShortsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
+import { Trash2 } from "lucide-react";
 import axios from "axios";
 
 export default function ShortsPage() {
@@ -22,11 +25,40 @@ export default function ShortsPage() {
     likeShort,
     markWatched,
     setCurrentIndex,
+    invalidate,
   } = useShortsStore();
 
   const loadingSentinel = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
+
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
+
+  const isAtLastShort = !hasMore && shorts.length > 0 && currentIndex >= shorts.length - 1;
+
+  const handleDeleteAllShorts = useCallback(async () => {
+    if (!user?.username) return;
+
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/shorts?username=${user.username}`);
+      toast.success("All shorts deleted");
+      invalidate();
+      fetchShorts(user.username, true);
+      setShowDeleteOverlay(false);
+    } catch {
+      toast.error("Failed to delete shorts");
+    } finally {
+      setDeleting(false);
+    }
+  }, [user, invalidate, fetchShorts]);
+
+  useEffect(() => {
+    if (isAtLastShort) {
+      setShowDeleteOverlay(true);
+    }
+  }, [isAtLastShort]);
 
   useEffect(() => {
     initAuth();
@@ -189,6 +221,29 @@ useEffect(() => {
           <ShortsIcon size={64} className="mb-4 opacity-50" />
           <p className="text-lg">No Shorts yet</p>
           <p className="text-sm mt-2">Sync your subscriptions to see Shorts here</p>
+        </div>
+      ) : showDeleteOverlay && shorts.length > 0 ? (
+        <div className="h-full w-full flex items-center justify-center">
+          <div className="flex flex-col items-center gap-6">
+            <ShortsIcon size={80} className="opacity-30" />
+            <Alert
+              title="Delete All Shorts?"
+              description={`This will permanently delete all ${shorts.length} shorts from your library. This action cannot be undone.`}
+              onContinue={handleDeleteAllShorts}
+              loading={deleting}
+              trigger={
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  disabled={deleting}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  {deleting ? "Deleting..." : "Delete All Shorts"}
+                </Button>
+              }
+            />
+          </div>
         </div>
       ) : (
         <div
