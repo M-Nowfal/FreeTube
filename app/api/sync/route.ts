@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     let totalAdded = 0;
     let shortsAdded = 0;
-    const MAX_SHORTS = 100;
+    const MAX_SHORTS = 1000;
 
     for (const sub of user.subscriptions) {
       try {

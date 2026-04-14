@@ -11,7 +11,7 @@ import { useShortsStore } from "@/store/useShortsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
-import { Trash2, ArrowLeft } from "lucide-react";
+import { Trash2, ArrowLeft, ArrowUp } from "lucide-react";
 import axios from "axios";
 
 export default function ShortsPage() {
@@ -46,6 +46,23 @@ export default function ShortsPage() {
       });
     }
   }, [shorts.length]);
+
+  const handleGoToPreviousPage = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleGoToTop = useCallback(() => {
+    setShowDeleteOverlay(false);
+    setHasReachedEnd(false);
+    setCurrentIndex(0);
+    const container = containerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [setCurrentIndex]);
 
   // Reset state when shorts are refreshed/deleted
   useEffect(() => {
@@ -94,13 +111,13 @@ export default function ShortsPage() {
   // Effect to navigate to first unwatched short after shorts are loaded
   useEffect(() => {
     if (shorts.length === 0 || currentIndex !== 0) return;
-    
+
     const unwatchedIndex = shorts.findIndex((s: IShort) => !s.watched);
     const container = containerRef.current;
     if (!container || shorts.length === 0) return;
-    
+
     const itemHeight = container.scrollHeight / shorts.length;
-    
+
     if (unwatchedIndex !== -1 && unwatchedIndex > 0) {
       container.scrollTo({
         top: unwatchedIndex * itemHeight,
@@ -141,13 +158,13 @@ export default function ShortsPage() {
   const handleShortChange = useCallback((index: number) => {
     setCurrentIndex(index);
     history.replaceState(null, "", "/shorts");
-    
+
     if (shorts[index] && !shorts[index].watched) {
       markWatched(shorts[index]._id!);
     }
   }, [setCurrentIndex, shorts, markWatched]);
 
-useEffect(() => {
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -155,7 +172,7 @@ useEffect(() => {
       const scrollTop = container.scrollTop;
       const itemHeight = container.scrollHeight / shorts.length;
       const newIndex = Math.round(scrollTop / itemHeight);
-      
+
       if (newIndex !== currentIndex && newIndex >= 0 && newIndex < shorts.length) {
         handleShortChange(newIndex);
       }
@@ -165,6 +182,11 @@ useEffect(() => {
       if (atLastShort && !showDeleteOverlay) {
         setHasReachedEnd(true);
         setShowDeleteOverlay(true);
+      }
+
+      // Hide overlay when scrolling away from the last short
+      if (newIndex < shorts.length - 1 && showDeleteOverlay) {
+        setShowDeleteOverlay(false);
       }
     };
 
@@ -243,14 +265,6 @@ useEffect(() => {
         </div>
       ) : showDeleteOverlay && shorts.length > 0 ? (
         <div className="h-full w-full flex flex-col items-center justify-center">
-          <Button
-            variant="ghost"
-            onClick={handleGoBack}
-            className="absolute top-4 left-4 gap-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            Back
-          </Button>
           <div className="flex flex-col items-center gap-6">
             <ShortsIcon size={80} className="opacity-30" />
             <Alert
@@ -270,6 +284,15 @@ useEffect(() => {
                 </Button>
               }
             />
+            <Button
+              variant="outline"
+              onClick={handleGoToPreviousPage}
+              className="gap-2 w-full"
+              size="lg"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Back
+            </Button>
           </div>
         </div>
       ) : (

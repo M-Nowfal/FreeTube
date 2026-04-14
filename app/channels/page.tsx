@@ -79,12 +79,13 @@ export default function SearchChannelsPage() {
 
     setSyncing(true);
     try {
-      await axios.post("/api/sync", {
+      const { data } = await axios.post("/api/sync", {
         username: user.username,
         timeframe: timeframe
       });
+      toast.success(data.message || "Sync completed");
       invalidateChannelCache();
-      fetchSubscriptions(user.username);
+      fetchSubscriptions(user.username, true);
     } catch (error: unknown) {
       toast.error("Sync failed");
     } finally {
