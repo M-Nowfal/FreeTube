@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Search, ExternalLink, UserPlus, UserMinus, RefreshCw, Scissors, Trash2 } from "lucide-react";
 import axios from "axios";
 import {
@@ -19,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { useChannelStore } from "@/store/useChannelStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { Alert } from "@/components/others/alert";
@@ -36,6 +38,7 @@ export default function SearchChannelsPage() {
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
   const { channels: subscribedChannels, loading: fetchingSubs, fetchSubscriptions, addChannel, removeChannel, lastSynced } = useSubscriptionsStore();
   const { removeShortsFromAllChannels, removeVideosFromAllChannels, invalidateAll: invalidateChannelCache } = useChannelStore();
+  const { invalidate: invalidatePlaylist } = usePlaylistStore();
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<IChannel[]>([]);
@@ -97,7 +100,7 @@ export default function SearchChannelsPage() {
       const res = await axios.delete(`/api/shorts?username=${user.username}`);
       toast.success(res.data.message || "All shorts deleted");
       removeShortsFromAllChannels();
-      fetchSubscriptions(user.username);
+      fetchSubscriptions(user.username, true);
     } catch {
       toast.error("Failed to delete shorts");
     } finally {
@@ -113,7 +116,8 @@ export default function SearchChannelsPage() {
       const res = await axios.delete(`/api/playlists?username=${user.username}`);
       toast.success(res.data.message || "All videos deleted");
       removeVideosFromAllChannels();
-      fetchSubscriptions(user.username);
+      invalidatePlaylist();
+      fetchSubscriptions(user.username, true);
     } catch {
       toast.error("Failed to delete videos");
     } finally {
@@ -246,8 +250,8 @@ export default function SearchChannelsPage() {
                 className="flex flex-col group overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-300 bg-card/50 hover:bg-card"
               >
                 <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-5">
-                  <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300">
-                    <img src={channel.thumbnail} alt={channel.title} className="w-full h-full object-cover" />
+                  <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300 relative">
+                    <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
                   </div>
                   <div className="flex flex-col gap-1.5 overflow-hidden">
                     <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
@@ -371,8 +375,8 @@ export default function SearchChannelsPage() {
                 className="gap-0 flex flex-col group overflow-hidden bg-card/50 hover:bg-card hover:shadow-md transition-all duration-300 cursor-pointer"
               >
                 <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border bg-muted">
-                    <img src={channel.thumbnail} alt={channel.title} className="w-full h-full object-cover" />
+                  <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border bg-muted relative">
+                    <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
                   </div>
                   <div className="flex flex-col overflow-hidden">
                     <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
