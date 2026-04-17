@@ -378,7 +378,7 @@ export default function PlaylistPage() {
                     <div>
                       <h3 className="font-medium line-clamp-2">{playlist.channelTitle}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {playlist.videos.length} videos
+                        {playlist.videos.filter(v => v.watched).length}/{playlist.videos.length} watched
                       </p>
                     </div>
                   </div>

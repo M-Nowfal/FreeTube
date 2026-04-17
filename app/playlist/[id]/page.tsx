@@ -8,11 +8,13 @@ import { Loader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Play, ThumbsUp, MessageSquare, Trash2, CheckCircle, Share2 } from "lucide-react";
+import { Play, ThumbsUp, MessageSquare, Trash2, CheckCircle, Share2, EyeOff } from "lucide-react";
 import { Alert } from "@/components/others/alert";
 import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { sharePlaylist } from "@/lib/share-playlist";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface IVideoExtended extends IVideo {
   watched?: boolean;
@@ -39,6 +41,7 @@ export default function SinglePlaylistPage() {
   const [currentVideo, setCurrentVideo] = useState<IVideoExtended | null>(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [videoStats, setVideoStats] = useState<Record<string, IVideoStats>>({});
+  const [showUnwatchedOnly, setShowUnwatchedOnly] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -107,12 +110,12 @@ export default function SinglePlaylistPage() {
       } else {
         try {
           const { data } = await axios.get(`/api/playlists/${playlistId}`);
-          loadedPlaylist = { 
-            ...data.playlist, 
-            videos: data.playlist.videos.map((v: any) => ({ 
-              ...v, 
-              videoId: v.videoId || extractVideoId(v.thumbnail) 
-            })) 
+          loadedPlaylist = {
+            ...data.playlist,
+            videos: data.playlist.videos.map((v: any) => ({
+              ...v,
+              videoId: v.videoId || extractVideoId(v.thumbnail)
+            }))
           };
         } catch (err) {
           toast.error("Playlist not found");
@@ -125,10 +128,11 @@ export default function SinglePlaylistPage() {
         setPlaylist(loadedPlaylist);
         const targetVideo = videoId
           ? loadedPlaylist.videos.find((v: IVideoExtended) =>
-              v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
-            )
+            v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
+          )
           : null;
-        handleVideoSelect(targetVideo || loadedPlaylist.videos[0]);
+        const firstUnwatched = loadedPlaylist.videos.find((v: IVideoExtended) => !v.watched);
+        handleVideoSelect(targetVideo || firstUnwatched || loadedPlaylist.videos[0]);
 
         if (loadedPlaylist.videos.length > 0) {
           const idsToFetch = loadedPlaylist.videos
@@ -140,7 +144,7 @@ export default function SinglePlaylistPage() {
             try {
               const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
               setVideoStats(res.data.stats || {});
-            } catch (e) {}
+            } catch (e) { }
           }
         }
       }
@@ -305,21 +309,27 @@ export default function SinglePlaylistPage() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted-foreground">
-                      {playlist.videos.length} videos
+                      {playlist.videos.filter((v: IVideo) => v.watched).length}/{playlist.videos.length} watched
                     </p>
-                    <span className="text-muted-foreground/50">|</span>
-                    <p className="text-xs text-muted-foreground">
-                      {playlist.videos.filter((v: IVideo) => v.watched).length} watched
-                    </p>
+                    {playlist.updatedAt && (
+                      <>
+                        <span className="text-muted-foreground/50">|</span>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(playlist.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      </>
+                    )}
                   </div>
-                  {playlist.updatedAt && (
-                    <p className="text-xs text-muted-foreground">
-                      Last synced: {new Date(playlist.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                    </p>
-                  )}
                 </div>
               </div>
-              <div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Switch
+                    checked={showUnwatchedOnly}
+                    onCheckedChange={setShowUnwatchedOnly}
+                  />
+                </div>
                 <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, playlist._id)}>
                   <Share2 className="h-4 w-4" />
                 </Button>
@@ -337,67 +347,75 @@ export default function SinglePlaylistPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-2">
-              {playlist.videos.map((video: IVideoExtended, idx) => {
-                const vidId = video.videoId || extractVideoId(video.thumbnail);
-                const isPlaying = currentVideoId === vidId;
+              {playlist.videos
+                .filter((video: IVideoExtended) => !showUnwatchedOnly || !video.watched)
+                .map((video: IVideoExtended, idx) => {
+                  const vidId = video.videoId || extractVideoId(video.thumbnail);
+                  const isPlaying = currentVideoId === vidId;
 
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => handleVideoSelect(video)}
-                    className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all group relative ${isPlaying ? "bg-secondary" : "hover:bg-muted"}`}
-                  >
-                    <div className="relative w-32 aspect-video rounded-md overflow-hidden shrink-0 bg-black">
-                      <Image
-                        src={video.thumbnail}
-                        alt={video.title}
-                        fill
-                        className={`object-cover ${isPlaying ? "opacity-60" : ""}`}
-                      />
-                      {isPlaying && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Play className="h-6 w-6 text-white drop-shadow-md" fill="currentColor" />
-                        </div>
-                      )}
-                      {video.watched && !isPlaying && (
-                        <div className="absolute bottom-1 right-1">
-                          <CheckCircle className="h-4 w-4 text-green-500 bg-black/50 rounded-full" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
-                      <h3 className={`font-medium text-sm line-clamp-2 wrap-break-word ${isPlaying ? "text-primary" : ""}`}>
-                        {video.title}
-                      </h3>
-                    </div>
-
+                  return (
                     <div
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+                      key={idx}
+                      onClick={() => handleVideoSelect(video)}
+                      className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all group relative ${isPlaying ? "bg-secondary" : "hover:bg-muted"}`}
                     >
-                      <Alert
-                        title="Remove Video"
-                        description="Are you sure you want to remove this video from the playlist?"
-                        onContinue={() => handleRemoveVideo(vidId as string)}
-                        trigger={
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8 text-foreground shadow-sm"
-                            title="Remove video"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
+                      <div className="relative w-32 aspect-video rounded-md overflow-hidden shrink-0 bg-black">
+                        <Image
+                          src={video.thumbnail}
+                          alt={video.title}
+                          fill
+                          className={`object-cover ${isPlaying ? "opacity-60" : ""}`}
+                        />
+                        {isPlaying && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Play className="h-6 w-6 text-white drop-shadow-md" fill="currentColor" />
+                          </div>
+                        )}
+                        {video.watched && !isPlaying && (
+                          <>
+                            <div className="absolute inset-0 bg-black/20" />
+                            <div className="absolute bottom-1 right-1 flex items-center gap-1">
+                              <CheckCircle className="h-4 w-4 text-green-500 bg-black/50 rounded-full" />
+                              <span className="text-[9px] text-white bg-green-600 px-1 py-0.5 rounded font-medium">
+                                Watched
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col justify-start overflow-hidden w-full pr-10">
+                        <h3 className={`font-medium text-sm line-clamp-2 wrap-break-word ${isPlaying ? "text-primary" : ""}`}>
+                          {video.title}
+                        </h3>
+                      </div>
+
+                      <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+                      >
+                        <Alert
+                          title="Remove Video"
+                          description="Are you sure you want to remove this video from the playlist?"
+                          onContinue={() => handleRemoveVideo(vidId as string)}
+                          trigger={
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8 text-foreground shadow-sm"
+                              title="Remove video"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
         </div>

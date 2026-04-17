@@ -4,6 +4,7 @@ import { useEffect, useState, use, useMemo } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useChannelStore } from "@/store/useChannelStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2, Scissors, UserMinus } from "lucide-react";
@@ -61,7 +62,8 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
 
   const { user } = useUserStore();
   const { cache, loading, fetchChannel, getChannelData, updateChannelVideos, invalidate } = useChannelStore();
-  const { removeChannel } = useSubscriptionsStore();
+  const { removeChannel, invalidate: invalidateSubscriptions, fetchSubscriptions } = useSubscriptionsStore();
+  const { invalidate: invalidatePlaylist, fetchPlaylists } = usePlaylistStore();
 
   const [playlistUpdatedAt, setPlaylistUpdatedAt] = useState<string | null>(null);
   const [channelInfo, setChannelInfo] = useState<IChannelInfo | null>(null);
@@ -199,6 +201,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       toast.success(data.message);
       invalidate(id);
       fetchChannel(id, user.username, titleParam);
+      invalidatePlaylist();
+      fetchPlaylists(user.username, true);
+      invalidateSubscriptions();
+      fetchSubscriptions(user.username, true);
     } catch (error: any) {
       toast.error(error.message || "Sync failed");
     } finally {
