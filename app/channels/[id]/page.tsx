@@ -298,7 +298,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-6 px-4 md:px-12 mt-8 mb-12">
           <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-muted overflow-hidden shrink-0 shadow-md">
             {channelInfo.thumbnail ? (
-              <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300 relative">
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300 relative">
                 <Image src={channelInfo.thumbnail} alt={channelInfo.title} fill className="object-cover" />
               </div>
             ) : (

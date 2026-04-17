@@ -4,7 +4,7 @@ import { Playlist } from "@/models/playlist.model";
 import { Short } from "@/models/short.model";
 import axios from "axios";
 import { YOUTUBE_API_KEY } from "@/utils/constants";
-import { parseDuration, isYouTubeShort } from "@/utils/helper";
+import { parseDuration, isYouTubeShortAccurate } from "@/utils/helper";
 
 export async function POST(req: NextRequest) {
   try {
@@ -114,9 +114,8 @@ export async function POST(req: NextRequest) {
 
       for (const item of items) {
         const videoId = item.id.videoId;
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
         const details = detailsMap[videoId] || { duration: 0, views: 0, likes: 0, channelThumbnail: "" };
-        const isShort = isYouTubeShort(videoUrl, details.duration);
+        const isShort = await isYouTubeShortAccurate(videoId, channelId, details.duration);
 
         if (isShort) {
           const existingShort = await Short.findOne({ username, videoId });

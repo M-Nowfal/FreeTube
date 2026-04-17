@@ -1,3 +1,6 @@
+import axios from "axios";
+import { YOUTUBE_API_KEY } from "@/utils/constants";
+
 export function getYouTubeVideoId(url: string): string | null {
   try {
     const parsed = new URL(url);
@@ -72,4 +75,47 @@ export function formatDuration(seconds: number): string {
   }
   
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+export function getChannelShortsPlaylistId(channelId: string): string {
+  if (channelId.startsWith("UC")) {
+    return "UUSH" + channelId.substring(2);
+  }
+  return channelId;
+}
+
+export async function isInChannelShortsPlaylist(
+  videoId: string,
+  channelId: string
+): Promise<boolean> {
+  const shortsPlaylistId = getChannelShortsPlaylistId(channelId);
+
+  try {
+    const res = await axios.get(
+      "https://www.googleapis.com/youtube/v3/playlistItems",
+      {
+        params: {
+          part: "id",
+          playlistId: shortsPlaylistId,
+          videoId: videoId,
+          key: YOUTUBE_API_KEY,
+        },
+      }
+    );
+
+    return (res.data.pageInfo?.totalResults ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function isYouTubeShortAccurate(
+  videoId: string,
+  channelId: string,
+  durationSeconds: number
+): Promise<boolean> {
+  const isInShorts = await isInChannelShortsPlaylist(videoId, channelId);
+  if (isInShorts) return true;
+
+  return durationSeconds > 0 && durationSeconds <= 180;
 }

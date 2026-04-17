@@ -11,8 +11,9 @@ import { useShortsStore } from "@/store/useShortsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
-import { Trash2, ArrowLeft, ArrowUp } from "lucide-react";
+import { Trash2, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import axios from "axios";
+import useEmblaCarousel from "embla-carousel-react";
 
 export default function ShortsPage() {
   const router = useRouter();
@@ -36,16 +37,30 @@ export default function ShortsPage() {
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
   const [hasReachedEnd, setHasReachedEnd] = useState(false);
 
+  const [emblaRef, embla] = useEmblaCarousel({
+    axis: "y",
+    loop: false,
+    align: "start",
+    skipSnaps: false,
+    containScroll: "trimSnaps",
+  });
+
+  const scrollPrev = useCallback(() => {
+    if (embla) embla.scrollPrev();
+  }, [embla]);
+
+  const scrollNext = useCallback(() => {
+    if (embla) embla.scrollNext();
+  }, [embla]);
+
+  const scrollTo = useCallback((index: number) => {
+    if (embla) embla.scrollTo(index);
+  }, [embla]);
+
   const handleGoBack = useCallback(() => {
     setShowDeleteOverlay(false);
-    const container = containerRef.current;
-    if (container) {
-      container.scrollTo({
-        top: (shorts.length - 1) * (container.scrollHeight / shorts.length),
-        behavior: "smooth",
-      });
-    }
-  }, [shorts.length]);
+    scrollTo(shorts.length - 1);
+  }, [shorts.length, scrollTo]);
 
   const handleGoToPreviousPage = useCallback(() => {
     router.back();
@@ -55,16 +70,9 @@ export default function ShortsPage() {
     setShowDeleteOverlay(false);
     setHasReachedEnd(false);
     setCurrentIndex(0);
-    const container = containerRef.current;
-    if (container) {
-      container.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    }
-  }, [setCurrentIndex]);
+    scrollTo(0);
+  }, [setCurrentIndex, scrollTo]);
 
-  // Reset state when shorts are refreshed/deleted
   useEffect(() => {
     if (shorts.length === 0) {
       setShowDeleteOverlay(false);
@@ -91,7 +99,6 @@ export default function ShortsPage() {
 
   useEffect(() => {
     initAuth();
-    history.scrollRestoration = "manual";
   }, []);
 
   useEffect(() => {
@@ -108,30 +115,67 @@ export default function ShortsPage() {
     }
   }, [authInitialized, isAuth, authLoading, user?.username]);
 
-  // Effect to navigate to first unwatched short after shorts are loaded
+  useEffect(() => {
+    if (!embla) return;
+
+    const onSelect = () => {
+      const selectedIndex = embla.selectedScrollSnap();
+      if (selectedIndex !== currentIndex) {
+        setCurrentIndex(selectedIndex);
+        history.replaceState(null, "", "/shorts");
+
+        if (shorts[selectedIndex] && !shorts[selectedIndex].watched) {
+          markWatched(shorts[selectedIndex]._id!);
+        }
+
+        if (selectedIndex >= shorts.length - 1 && !hasMore) {
+          if (!showDeleteOverlay) {
+            setHasReachedEnd(true);
+            setShowDeleteOverlay(true);
+          }
+        } else if (showDeleteOverlay) {
+          setShowDeleteOverlay(false);
+        }
+      }
+    };
+
+    embla.on("select", onSelect);
+
+    return () => {
+      embla.off("select", onSelect);
+    };
+  }, [embla, currentIndex, shorts, hasMore, showDeleteOverlay, setCurrentIndex, markWatched]);
+
   useEffect(() => {
     if (shorts.length === 0 || currentIndex !== 0) return;
 
     const unwatchedIndex = shorts.findIndex((s: IShort) => !s.watched);
-    const container = containerRef.current;
-    if (!container || shorts.length === 0) return;
-
-    const itemHeight = container.scrollHeight / shorts.length;
 
     if (unwatchedIndex !== -1 && unwatchedIndex > 0) {
-      container.scrollTo({
-        top: unwatchedIndex * itemHeight,
-        behavior: "smooth",
-      });
+      scrollTo(unwatchedIndex);
     } else if (unwatchedIndex === -1 && shorts.length > 0) {
-      // All watched, go to first
       toast.info("All shorts are watched");
-      container.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
     }
   }, [shorts.length]);
+
+  useEffect(() => {
+    if (hasMore && loadingSentinel.current && embla && !loading) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasMore && !loading && user?.username) {
+            fetchShorts(user.username);
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      observer.observe(loadingSentinel.current);
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, [hasMore, loading, embla, user?.username, fetchShorts]);
 
   const handleLike = useCallback(async (shortId: string) => {
     await likeShort(shortId);
@@ -155,45 +199,6 @@ export default function ShortsPage() {
     }
   }, [user]);
 
-  const handleShortChange = useCallback((index: number) => {
-    setCurrentIndex(index);
-    history.replaceState(null, "", "/shorts");
-
-    if (shorts[index] && !shorts[index].watched) {
-      markWatched(shorts[index]._id!);
-    }
-  }, [setCurrentIndex, shorts, markWatched]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const scrollTop = container.scrollTop;
-      const itemHeight = container.scrollHeight / shorts.length;
-      const newIndex = Math.round(scrollTop / itemHeight);
-
-      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < shorts.length) {
-        handleShortChange(newIndex);
-      }
-
-      // Check if user has reached the end (last short)
-      const atLastShort = newIndex >= shorts.length - 1 && !hasMore;
-      if (atLastShort && !showDeleteOverlay) {
-        setHasReachedEnd(true);
-        setShowDeleteOverlay(true);
-      }
-
-      // Hide overlay when scrolling away from the last short
-      if (newIndex < shorts.length - 1 && showDeleteOverlay) {
-        setShowDeleteOverlay(false);
-      }
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [shorts.length, currentIndex, handleShortChange, hasMore, showDeleteOverlay]);
-
   useEffect(() => {
     const channelsUrl = "/channels";
     let ignorePopState = false;
@@ -208,23 +213,9 @@ export default function ShortsPage() {
       if (e.key === "Escape") {
         navigateToChannels();
       } else if (e.key === "ArrowUp" && currentIndex > 0) {
-        const container = containerRef.current;
-        if (container) {
-          const itemHeight = container.scrollHeight / shorts.length;
-          container.scrollTo({
-            top: (currentIndex - 1) * itemHeight,
-            behavior: "smooth",
-          });
-        }
+        scrollPrev();
       } else if (e.key === "ArrowDown" && currentIndex < shorts.length - 1) {
-        const container = containerRef.current;
-        if (container) {
-          const itemHeight = container.scrollHeight / shorts.length;
-          container.scrollTo({
-            top: (currentIndex + 1) * itemHeight,
-            behavior: "smooth",
-          });
-        }
+        scrollNext();
       }
     };
 
@@ -243,7 +234,7 @@ export default function ShortsPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("popstate", handlePopState, { capture: true });
     };
-  }, [currentIndex, shorts.length]);
+  }, [currentIndex, shorts.length, scrollPrev, scrollNext]);
 
   if (!authInitialized) return null;
 
@@ -252,7 +243,7 @@ export default function ShortsPage() {
   }
 
   return (
-    <div className="h-screen w-full overflow-hidden">
+    <div className="h-screen w-full overflow-hidden relative">
       {loading && shorts.length === 0 ? (
         <div className="flex justify-center items-center h-full">
           <Loader size={50} />
@@ -296,31 +287,60 @@ export default function ShortsPage() {
           </div>
         </div>
       ) : (
-        <div
-          ref={containerRef}
-          className="h-full w-full overflow-y-auto snap-y snap-mandatory scroll-smooth scrollbar-hidden"
-          style={{ scrollSnapType: "y mandatory" }}
-        >
-          {shorts.map((short, index) => (
+        <>
+          <div
+            ref={emblaRef}
+            className="h-full w-full overflow-hidden"
+          >
             <div
-              key={short._id}
-              className="h-screen w-full snap-start"
+              ref={containerRef}
+              className="h-full w-full"
+              style={{ display: "flex", flexDirection: "column" }}
             >
-              <ShortCard
-                short={short}
-                isActive={index === currentIndex}
-                onLike={handleLike}
-                onWatchLater={handleWatchLater}
-              />
-            </div>
-          ))}
+              {shorts.map((short, index) => (
+                <div
+                  key={short._id}
+                  className="h-screen w-full shrink-0"
+                >
+                  <ShortCard
+                    short={short}
+                    isActive={index === currentIndex}
+                    onLike={handleLike}
+                    onWatchLater={handleWatchLater}
+                  />
+                </div>
+              ))}
 
-          {hasMore && (
-            <div ref={loadingSentinel} className="h-20 flex items-center justify-center">
-              {loading && <Loader size={32} />}
+              {hasMore && (
+                <div ref={loadingSentinel} className="h-20 flex items-center justify-center shrink-0">
+                  {loading && <Loader size={32} />}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+
+          <div className="fixed right-4 lg:right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50 hidden lg:flex pointer-events-none">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full opacity-60 hover:opacity-100 pointer-events-auto disabled:opacity-30"
+              onClick={scrollPrev}
+              disabled={currentIndex === 0}
+            >
+              <ChevronUp className="h-6 w-6" />
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full opacity-60 hover:opacity-100 pointer-events-auto disabled:opacity-30"
+              onClick={scrollNext}
+              disabled={currentIndex === shorts.length - 1}
+            >
+              <ChevronDown className="h-6 w-6" />
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
