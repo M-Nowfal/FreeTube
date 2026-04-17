@@ -13,7 +13,6 @@ import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
 import { Trash2, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import axios from "axios";
-import useEmblaCarousel from "embla-carousel-react";
 
 export default function ShortsPage() {
   const router = useRouter();
@@ -29,38 +28,41 @@ export default function ShortsPage() {
     invalidate,
   } = useShortsStore();
 
-  const loadingSentinel = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
-  const [hasReachedEnd, setHasReachedEnd] = useState(false);
+  const [allWatched, setAllWatched] = useState(false);
 
-  const [emblaRef, embla] = useEmblaCarousel({
-    axis: "y",
-    loop: false,
-    align: "start",
-    skipSnaps: false,
-    containScroll: "trimSnaps",
-  });
+  const scrollToIndex = useCallback((index: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const itemHeight = window.innerHeight;
+    container.scrollTo({
+      top: index * itemHeight,
+      behavior: "smooth",
+    });
+  }, []);
 
   const scrollPrev = useCallback(() => {
-    if (embla) embla.scrollPrev();
-  }, [embla]);
+    if (currentIndex > 0) {
+      scrollToIndex(currentIndex - 1);
+    }
+  }, [currentIndex, scrollToIndex]);
 
   const scrollNext = useCallback(() => {
-    if (embla) embla.scrollNext();
-  }, [embla]);
-
-  const scrollTo = useCallback((index: number) => {
-    if (embla) embla.scrollTo(index);
-  }, [embla]);
+    if (currentIndex < shorts.length - 1) {
+      scrollToIndex(currentIndex + 1);
+    }
+  }, [currentIndex, shorts.length, scrollToIndex]);
 
   const handleGoBack = useCallback(() => {
     setShowDeleteOverlay(false);
-    scrollTo(shorts.length - 1);
-  }, [shorts.length, scrollTo]);
+    setAllWatched(false);
+    scrollToIndex(shorts.length - 1);
+  }, [shorts.length, scrollToIndex]);
 
   const handleGoToPreviousPage = useCallback(() => {
     router.back();
@@ -68,17 +70,27 @@ export default function ShortsPage() {
 
   const handleGoToTop = useCallback(() => {
     setShowDeleteOverlay(false);
-    setHasReachedEnd(false);
+    setAllWatched(false);
     setCurrentIndex(0);
-    scrollTo(0);
-  }, [setCurrentIndex, scrollTo]);
+    scrollToIndex(0);
+  }, [setCurrentIndex, scrollToIndex]);
 
   useEffect(() => {
     if (shorts.length === 0) {
       setShowDeleteOverlay(false);
-      setHasReachedEnd(false);
+      setAllWatched(false);
     }
   }, [shorts.length]);
+
+  useEffect(() => {
+    if (shorts.length > 0) {
+      const allWatchedShorts = shorts.every((s: IShort) => s.watched);
+      setAllWatched(allWatchedShorts);
+      if (allWatchedShorts && !hasMore) {
+        setShowDeleteOverlay(true);
+      }
+    }
+  }, [shorts, hasMore]);
 
   const handleDeleteAllShorts = useCallback(async () => {
     if (!user?.username) return;
@@ -90,6 +102,7 @@ export default function ShortsPage() {
       invalidate();
       fetchShorts(user.username, true);
       setShowDeleteOverlay(false);
+      setAllWatched(false);
     } catch {
       toast.error("Failed to delete shorts");
     } finally {
@@ -116,66 +129,45 @@ export default function ShortsPage() {
   }, [authInitialized, isAuth, authLoading, user?.username]);
 
   useEffect(() => {
-    if (!embla) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const onSelect = () => {
-      const selectedIndex = embla.selectedScrollSnap();
-      if (selectedIndex !== currentIndex) {
-        setCurrentIndex(selectedIndex);
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      const itemHeight = window.innerHeight;
+      const newIndex = Math.round(scrollTop / itemHeight);
+
+      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < shorts.length) {
+        setCurrentIndex(newIndex);
         history.replaceState(null, "", "/shorts");
 
-        if (shorts[selectedIndex] && !shorts[selectedIndex].watched) {
-          markWatched(shorts[selectedIndex]._id!);
+        if (shorts[newIndex] && !shorts[newIndex].watched) {
+          markWatched(shorts[newIndex]._id!);
         }
 
-        if (selectedIndex >= shorts.length - 1 && !hasMore) {
-          if (!showDeleteOverlay) {
-            setHasReachedEnd(true);
-            setShowDeleteOverlay(true);
-          }
+        if (newIndex >= shorts.length - 1 && !hasMore) {
+          setShowDeleteOverlay(true);
         } else if (showDeleteOverlay) {
           setShowDeleteOverlay(false);
         }
       }
     };
 
-    embla.on("select", onSelect);
-
-    return () => {
-      embla.off("select", onSelect);
-    };
-  }, [embla, currentIndex, shorts, hasMore, showDeleteOverlay, setCurrentIndex, markWatched]);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [currentIndex, shorts, hasMore, showDeleteOverlay, setCurrentIndex, markWatched]);
 
   useEffect(() => {
-    if (shorts.length === 0 || currentIndex !== 0) return;
+    if (shorts.length === 0) return;
 
     const unwatchedIndex = shorts.findIndex((s: IShort) => !s.watched);
 
-    if (unwatchedIndex !== -1 && unwatchedIndex > 0) {
-      scrollTo(unwatchedIndex);
+    if (unwatchedIndex !== -1 && unwatchedIndex !== currentIndex) {
+      scrollToIndex(unwatchedIndex);
     } else if (unwatchedIndex === -1 && shorts.length > 0) {
       toast.info("All shorts are watched");
     }
   }, [shorts.length]);
-
-  useEffect(() => {
-    if (hasMore && loadingSentinel.current && embla && !loading) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasMore && !loading && user?.username) {
-            fetchShorts(user.username);
-          }
-        },
-        { threshold: 0.1 }
-      );
-
-      observer.observe(loadingSentinel.current);
-
-      return () => {
-        observer.disconnect();
-      };
-    }
-  }, [hasMore, loading, embla, user?.username, fetchShorts]);
 
   const handleLike = useCallback(async (shortId: string) => {
     await likeShort(shortId);
@@ -212,9 +204,11 @@ export default function ShortsPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         navigateToChannels();
-      } else if (e.key === "ArrowUp" && currentIndex > 0) {
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
         scrollPrev();
-      } else if (e.key === "ArrowDown" && currentIndex < shorts.length - 1) {
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
         scrollNext();
       }
     };
@@ -254,10 +248,11 @@ export default function ShortsPage() {
           <p className="text-lg">No Shorts yet</p>
           <p className="text-sm mt-2">Sync your subscriptions to see Shorts here</p>
         </div>
-      ) : showDeleteOverlay && shorts.length > 0 ? (
+      ) : allWatched && !hasMore && !showDeleteOverlay ? (
         <div className="h-full w-full flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
             <ShortsIcon size={80} className="opacity-30" />
+            <p className="text-lg text-muted-foreground">All shorts have been watched</p>
             <Alert
               title="Delete All Shorts?"
               description={`This will permanently delete all ${shorts.length} shorts from your library. This action cannot be undone.`}
@@ -286,21 +281,58 @@ export default function ShortsPage() {
             </Button>
           </div>
         </div>
+      ) : showDeleteOverlay && shorts.length > 0 ? (
+        <div className="h-full w-full flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center gap-6">
+            <ShortsIcon size={80} className="opacity-30" />
+            <Alert
+              title="Delete All Shorts?"
+              description={`This will permanently delete all ${shorts.length} shorts from your library. This action cannot be undone.`}
+              onContinue={handleDeleteAllShorts}
+              loading={deleting}
+              trigger={
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  disabled={deleting}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  {deleting ? "Deleting..." : "Delete All Shorts"}
+                </Button>
+              }
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteOverlay(false);
+                if (currentIndex < shorts.length - 1) {
+                  scrollNext();
+                }
+              }}
+              className="gap-2"
+              size="lg"
+            >
+              Continue Watching
+            </Button>
+          </div>
+        </div>
       ) : (
         <>
           <div
-            ref={emblaRef}
-            className="h-full w-full overflow-hidden"
+            ref={containerRef}
+            className="h-full w-full overflow-hidden select-none"
+            onWheel={(e) => e.preventDefault()}
+            onTouchMove={(e) => e.preventDefault()}
           >
             <div
-              ref={containerRef}
-              className="h-full w-full"
+              className="w-full"
               style={{ display: "flex", flexDirection: "column" }}
             >
               {shorts.map((short, index) => (
                 <div
                   key={short._id}
-                  className="h-screen w-full shrink-0"
+                  className="h-[95vh] md:h-[98vh] w-full shrink-0"
                 >
                   <ShortCard
                     short={short}
@@ -310,20 +342,14 @@ export default function ShortsPage() {
                   />
                 </div>
               ))}
-
-              {hasMore && (
-                <div ref={loadingSentinel} className="h-20 flex items-center justify-center shrink-0">
-                  {loading && <Loader size={32} />}
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="fixed right-4 lg:right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50 hidden lg:flex pointer-events-none">
+          <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full opacity-60 hover:opacity-100 pointer-events-auto disabled:opacity-30"
+              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30"
               onClick={scrollPrev}
               disabled={currentIndex === 0}
             >
@@ -333,7 +359,7 @@ export default function ShortsPage() {
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full opacity-60 hover:opacity-100 pointer-events-auto disabled:opacity-30"
+              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30"
               onClick={scrollNext}
               disabled={currentIndex === shorts.length - 1}
             >
