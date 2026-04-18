@@ -34,17 +34,16 @@ export default function ShortsPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
   const [allWatched, setAllWatched] = useState(false);
-  
-  // State to track if the user chose to watch again so the overlay doesn't keep popping up
+
   const [userDismissedOverlay, setUserDismissedOverlay] = useState(false);
 
   const scrollToIndex = useCallback((index: number) => {
     const container = containerRef.current;
     if (!container) return;
-    
+
     const shortElements = container.querySelectorAll('.short-container-item');
     const targetElement = shortElements[index];
-    
+
     if (targetElement) {
       targetElement.scrollIntoView({
         behavior: "smooth",
@@ -74,7 +73,7 @@ export default function ShortsPage() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const newIndex = parseInt(entry.target.getAttribute("data-index") || "0", 10);
-            
+
             if (newIndex !== currentIndex) {
               setCurrentIndex(newIndex);
               history.replaceState(null, "", "/shorts");
@@ -83,10 +82,9 @@ export default function ShortsPage() {
                 markWatched(shorts[newIndex]._id!);
               }
 
-              // Show overlay if at the end of the list
               if (newIndex >= shorts.length - 1 && !hasMore) {
                 setShowDeleteOverlay(true);
-                setUserDismissedOverlay(false); // Reset dismissal if they scroll to the bottom naturally
+                setUserDismissedOverlay(false);
               } else if (showDeleteOverlay) {
                 setShowDeleteOverlay(false);
               }
@@ -96,7 +94,7 @@ export default function ShortsPage() {
       },
       {
         root: container,
-        threshold: 0.6, 
+        threshold: 0.6,
       }
     );
 
@@ -117,8 +115,7 @@ export default function ShortsPage() {
     if (shorts.length > 0) {
       const allWatchedShorts = shorts.every((s: IShort) => s.watched);
       setAllWatched(allWatchedShorts);
-      
-      // Only show the overlay automatically if they haven't explicitly dismissed it
+
       if (allWatchedShorts && !hasMore && !userDismissedOverlay) {
         setShowDeleteOverlay(true);
       }
@@ -242,7 +239,8 @@ export default function ShortsPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] w-full relative">
+    // FIXED: Changed from h-[calc(100vh-64px)] to h-full to perfectly fill the layout
+    <div className="h-full w-full relative">
       {loading && shorts.length === 0 ? (
         <div className="flex justify-center items-center h-full">
           <Loader size={50} />
@@ -258,7 +256,7 @@ export default function ShortsPage() {
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <ShortsIcon size={80} className="opacity-30 mb-2" />
             <p className="text-lg text-muted-foreground text-center mb-4">You've caught up on all Shorts!</p>
-            
+
             <Button
               variant="default"
               onClick={() => {
@@ -305,12 +303,12 @@ export default function ShortsPage() {
             className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hidden"
             style={{ scrollBehavior: 'smooth' }}
           >
-            <div className="w-full max-w-xl m-auto flex flex-col">
+            <div className="w-full max-w-xl m-auto flex flex-col h-full">
               {shorts.map((short, index) => (
                 <div
                   key={short._id}
                   data-index={index}
-                  className="short-container-item h-[calc(100vh-64px)] w-full shrink-0 snap-start snap-always"
+                  className="short-container-item h-full w-full shrink-0 snap-start snap-always"
                 >
                   <ShortCard
                     short={short}
@@ -323,11 +321,19 @@ export default function ShortsPage() {
             </div>
           </div>
 
-          <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
+          <Button
+            variant="outline"
+            onClick={handleGoToPreviousPage}
+            className="fixed top-5 left-5 gap-2 rounded-full z-50 opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background"
+            size="icon"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="not-sm:hidden fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30 shadow-2xl"
+              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30 shadow-2xl md:bg-foreground md:text-background"
               onClick={scrollPrev}
               disabled={currentIndex === 0}
             >
@@ -337,7 +343,7 @@ export default function ShortsPage() {
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30 shadow-2xl"
+              className="rounded-full opacity-60 hover:opacity-100 disabled:opacity-30 shadow-2xl md:bg-foreground md:text-background"
               onClick={scrollNext}
               disabled={currentIndex === shorts.length - 1}
             >

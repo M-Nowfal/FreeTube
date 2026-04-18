@@ -75,7 +75,7 @@ export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardPr
   };
 
   return (
-    <div className="relative w-full h-[89vh] sm:h-[92vh] md:h-[95vh]">
+    <div className="relative w-full h-screen">
       {isActive ? (
         <iframe
           ref={iframeRef}

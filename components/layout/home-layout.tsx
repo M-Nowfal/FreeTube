@@ -16,17 +16,24 @@ export function HomeLayout({
   const pathname = usePathname();
   const { isAuth } = useAuth();
 
+  const isShortsPage = pathname.startsWith("/shorts");
+  const isAuthPage = pathname.startsWith("/auth");
+  const showBottomBar = isAuth && !isAuthPage && !isShortsPage;
+  const showSideBar = !isAuthPage && !isShortsPage;
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex flex-col w-full">
-        {!pathname.startsWith("/auth") && <Header />}
+        {!isAuthPage && !isShortsPage && <Header />}
+
         <div className="flex flex-1">
-          <SideBar />
-          <main className="flex-1 pb-12">
+          {showSideBar && <SideBar />}
+          <main className={`flex flex-col flex-1 ${showBottomBar ? "pb-12" : "pb-0"}`}>
             {children}
           </main>
         </div>
-        {(isAuth && pathname !== "/auth/login" && pathname !== "/auth/signup") && <BottomBar />}
+
+        {showBottomBar && <BottomBar />}
       </div>
     </SidebarProvider>
   );
