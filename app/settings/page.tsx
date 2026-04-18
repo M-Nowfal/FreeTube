@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/ui/loader";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Trash2, Film } from "lucide-react";
 import axios from "axios";
 import { PasswordConfirmDialog } from "@/components/others/password-confirm-dialog";
+import { Alert } from "@/components/others/alert";
 import { useUserStore } from "@/store/useUserStore";
 
 export default function SettingsPage() {
   const { isAuth, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { setUser } = useUserStore();
+  const { user, setUser } = useUserStore();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -28,6 +29,9 @@ export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
   const [error, setError] = useState("");
+  const [deletingAllVideos, setDeletingAllVideos] = useState(false);
+  const [deletingAllShorts, setDeletingAllShorts] = useState(false);
+  const [deletingWatched, setDeletingWatched] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuth) {
@@ -129,6 +133,48 @@ export default function SettingsPage() {
       toast.error(err.response?.data?.error || "Failed to send reset link");
     } finally {
       setSendingReset(false);
+    }
+  };
+
+  const handleDeleteWatchedVideos = async () => {
+    setDeletingWatched(true);
+    try {
+      const { data } = await axios.delete(`/api/user?username=${user?.username}&action=watched-videos`, {
+        withCredentials: true,
+      });
+      toast.success(data.message);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete watched videos");
+    } finally {
+      setDeletingWatched(false);
+    }
+  };
+
+  const handleDeleteAllVideos = async () => {
+    setDeletingAllVideos(true);
+    try {
+      const { data } = await axios.delete(`/api/user?username=${user?.username}&action=all-videos`, {
+        withCredentials: true,
+      });
+      toast.success(data.message);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete all videos");
+    } finally {
+      setDeletingAllVideos(false);
+    }
+  };
+
+  const handleDeleteAllShorts = async () => {
+    setDeletingAllShorts(true);
+    try {
+      const { data } = await axios.delete(`/api/user?username=${user?.username}&action=all-shorts`, {
+        withCredentials: true,
+      });
+      toast.success(data.message);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete all shorts");
+    } finally {
+      setDeletingAllShorts(false);
     }
   };
 
@@ -257,6 +303,57 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Manage Data</CardTitle>
+          <CardDescription>
+            Delete your videos and shorts data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Alert
+              trigger={
+                <Button variant="outline" disabled={deletingAllVideos} className="flex-1">
+                  {deletingAllVideos ? <Loader className="mr-2 h-4 w-4" /> : <Film className="mr-2 h-4 w-4" />}
+                  Delete All Videos
+                </Button>
+              }
+              title="Delete All Videos"
+              description="Are you sure you want to delete all videos? This action cannot be undone."
+              onContinue={handleDeleteAllVideos}
+              loading={deletingAllVideos}
+            />
+
+            <Alert
+              trigger={
+                <Button variant="outline" disabled={deletingAllShorts} className="flex-1">
+                  {deletingAllShorts ? <Loader className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                  Delete All Shorts
+                </Button>
+              }
+              title="Delete All Shorts"
+              description="Are you sure you want to delete all shorts? This action cannot be undone."
+              onContinue={handleDeleteAllShorts}
+              loading={deletingAllShorts}
+            />
+
+            <Alert
+              trigger={
+                <Button variant="outline" disabled={deletingWatched} className="flex-1">
+                  {deletingWatched ? <Loader className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+                  Delete Watched Videos
+                </Button>
+              }
+              title="Delete Watched Videos"
+              description="Are you sure you want to delete all watched videos, shorts, and watch later items? This action cannot be undone."
+              onContinue={handleDeleteWatchedVideos}
+              loading={deletingWatched}
+            />
+          </div>
         </CardContent>
       </Card>
 
