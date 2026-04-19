@@ -21,7 +21,8 @@ const PlaylistSchema = new Schema<IPlaylist>({
     required: true
   },
   videos: [VideoSchema],
-  isCustom: { type: Boolean, default: false }
+  isCustom: { type: Boolean, default: false },
+  lastSyncedAt: { type: Date, default: null }
 }, { timestamps: true });
 
 PlaylistSchema.index({ username: 1, channelTitle: 1 });

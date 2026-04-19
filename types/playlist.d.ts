@@ -14,4 +14,5 @@ export interface IPlaylist {
   videos: IVideo[];
   isCustom?: boolean;
   updatedAt?: string;
+  lastSyncedAt?: string;
 }

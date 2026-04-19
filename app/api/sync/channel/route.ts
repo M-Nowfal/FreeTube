@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
 
     if (timeframe === "last") {
       const playlist = await Playlist.findOne({ username, channelTitle });
-      if (playlist && playlist.videos.length > 0) {
+      if (playlist && playlist.lastSyncedAt) {
+        const lastSyncedDate = new Date(playlist.lastSyncedAt);
+        lastSyncedDate.setSeconds(lastSyncedDate.getSeconds() + 1);
+        publishedAfter = lastSyncedDate;
+      } else if (playlist && playlist.videos.length > 0) {
         const sortedVideos = [...playlist.videos].sort((a, b) => {
           const dateA = new Date(a.publishedAt || 0).getTime();
           const dateB = new Date(b.publishedAt || 0).getTime();
@@ -161,6 +165,19 @@ export async function POST(req: NextRequest) {
       }
 
       await playlist.save();
+
+      if (totalAdded > 0 || shortsAdded > 0) {
+        const sortedItems = [...items].sort((a, b) => {
+          const dateA = new Date(a.snippet.publishedAt || 0).getTime();
+          const dateB = new Date(b.snippet.publishedAt || 0).getTime();
+          return dateB - dateA;
+        });
+        const latestItem = sortedItems[0];
+        if (latestItem?.snippet?.publishedAt) {
+          playlist.lastSyncedAt = new Date(latestItem.snippet.publishedAt);
+          await playlist.save();
+        }
+      }
     }
 
     return NextResponse.json({ 
