@@ -9,7 +9,6 @@ interface VideoStatData {
   commentsCount: number;
 }
 
-// 2. Define the shape of the YouTube API response item
 interface YouTubeItem {
   id: string;
   snippet: { description: string };
@@ -20,19 +19,28 @@ interface YouTubeItem {
   };
 }
 
+const statsCache = new Map<string, { stats: Record<string, VideoStatData>; timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 15; // 15 minutes
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const ids = searchParams.get("ids"); // e.g., "id1,id2,id3"
+    const ids = searchParams.get("ids");
 
     if (!ids) return NextResponse.json({ message: "No IDs provided" }, { status: 400 });
+
+    // Check cache first
+    const cached = statsCache.get(ids);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return NextResponse.json({ stats: cached.stats }, { status: 200 });
+    }
 
     const response = await axios.get(
       "https://www.googleapis.com/youtube/v3/videos",
       {
         params: {
           part: "snippet,statistics",
-          id: ids, // Pass the comma-separated string here!
+          id: ids,
           key: YOUTUBE_API_KEY,
         },
       }
@@ -49,9 +57,15 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Cache the results
+    statsCache.set(ids, { stats: videoStats, timestamp: Date.now() });
+
     return NextResponse.json({ stats: videoStats }, { status: 200 });
   } catch (error: unknown) {
-    console.error(error);
+    console.error("YouTube API Error:", error);
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      return NextResponse.json({ message: "YouTube API quota exceeded. Please try again later.", stats: {} }, { status: 403 });
+    }
     return NextResponse.json({ message: "Server Error", error: error instanceof Error ? error.message : error }, { status: 500 });
   }
 }

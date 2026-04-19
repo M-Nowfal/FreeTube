@@ -87,20 +87,20 @@ export default function SinglePlaylistPage() {
 
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
 
-    if (!video.watched) {
+    if (!video.watched && actualVideoId) {
+      setPlaylist(prev => {
+        if (!prev) return prev;
+        const updatedVideos = prev.videos.map(v => {
+          const vId = v.videoId || extractVideoId(v.thumbnail);
+          return vId === actualVideoId ? { ...v, watched: true } : v;
+        });
+        return { ...prev, videos: updatedVideos };
+      });
+
       try {
         await axios.patch(`/api/playlists/${params.id}`, {
           action: "MARK_WATCHED",
           videoId: actualVideoId
-        });
-
-        setPlaylist(prev => {
-          if (!prev) return prev;
-          const updatedVideos = prev.videos.map(v => {
-            const vId = v.videoId || extractVideoId(v.thumbnail);
-            return vId === actualVideoId ? { ...v, watched: true } : v;
-          });
-          return { ...prev, videos: updatedVideos };
         });
       } catch (error) {
         console.error("Failed to mark as watched");

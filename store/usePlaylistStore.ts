@@ -19,6 +19,7 @@ interface PlaylistState {
   updatePlaylistVideos: (playlistId: string, videos: IVideo[]) => void;
   addVideoToPlaylist: (playlistId: string, video: IVideo) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
+  markVideoAsWatched: (playlistId: string, videoId: string) => void;
   addNewPlaylist: (playlist: IPlaylist & { _id: string }) => void;
   deletePlaylist: (id: string) => Promise<void>;
   createPlaylist: (username: string, playlistName: string, videoUrls: string[]) => Promise<IPlaylist & { _id: string }>;
@@ -102,6 +103,28 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
           playlists: state.cache.playlists.map((p) =>
             p._id === playlistId
               ? { ...p, videos: p.videos.filter((v) => v.videoId !== videoId) }
+              : p
+          ),
+          lastFetched: Date.now(),
+        },
+      };
+    });
+  },
+
+  markVideoAsWatched: (playlistId: string, videoId: string) => {
+    set((state) => {
+      if (!state.cache) return state;
+      return {
+        cache: {
+          ...state.cache,
+          playlists: state.cache.playlists.map((p) =>
+            p._id === playlistId
+              ? {
+                  ...p,
+                  videos: p.videos.map((v) =>
+                    v.videoId === videoId ? { ...v, watched: true } : v
+                  ),
+                }
               : p
           ),
           lastFetched: Date.now(),

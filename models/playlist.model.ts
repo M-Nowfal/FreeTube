@@ -9,7 +9,7 @@ const VideoSchema = new Schema<IVideo>({
   publishedAt: { type: String },
   watched: { type: Boolean, default: false },
   duration: { type: Number }
-});
+}, { _id: false });
 
 const PlaylistSchema = new Schema<IPlaylist>({
   username: {

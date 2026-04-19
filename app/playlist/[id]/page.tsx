@@ -14,7 +14,6 @@ import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { sharePlaylist } from "@/lib/share-playlist";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 interface IVideoExtended extends IVideo {
   watched?: boolean;
@@ -34,7 +33,7 @@ export default function SinglePlaylistPage() {
   const router = useRouter();
 
   const { user } = useUserStore();
-  const { getPlaylistById, fetchPlaylists, updatePlaylistVideos, removeVideoFromPlaylist, deletePlaylist } = usePlaylistStore();
+  const { getPlaylistById, fetchPlaylists, updatePlaylistVideos, removeVideoFromPlaylist, deletePlaylist, markVideoAsWatched } = usePlaylistStore();
 
   const [playlist, setPlaylist] = useState<IPlaylist & { _id: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,25 +56,32 @@ export default function SinglePlaylistPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
+    if (!actualVideoId || !playlist) return;
 
-    setPlaylist(prev => {
-      if (!prev) return prev;
-      const isWatched = prev.videos.some(v => (v.videoId || extractVideoId(v.thumbnail)) === actualVideoId && v.watched);
+    const isWatched = playlist.videos.some(v => (v.videoId || extractVideoId(v.thumbnail)) === actualVideoId && v.watched);
 
-      if (!isWatched) {
-        axios.patch(`/api/playlists/${prev._id}`, {
-          action: "MARK_WATCHED",
-          videoId: actualVideoId
-        }).then(() => {
-          updatePlaylistVideos(prev._id, prev.videos.map(v => {
+    if (!isWatched) {
+      // Update Zustand immediately
+      markVideoAsWatched(playlist._id, actualVideoId);
+      
+      // Update local state immediately
+      setPlaylist(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          videos: prev.videos.map(v => {
             const vId = v.videoId || extractVideoId(v.thumbnail);
             return vId === actualVideoId ? { ...v, watched: true } : v;
-          }));
-        }).catch(() => console.error("Failed to mark as watched"));
-      }
+          })
+        };
+      });
 
-      return prev;
-    });
+      // Update DB in background
+      axios.patch(`/api/playlists/${playlist._id}`, {
+        action: "MARK_WATCHED",
+        videoId: actualVideoId
+      }).catch(() => console.error("Failed to mark as watched"));
+    }
   };
 
   const playNextVideo = () => {
@@ -89,6 +95,20 @@ export default function SinglePlaylistPage() {
     });
 
     if (currentIndex !== -1 && currentIndex + 1 < playlist.videos.length) {
+      // Mark current as watched when video ends
+      if (!currentVideo.watched && currentVidId) {
+        markVideoAsWatched(playlist._id, currentVidId);
+        setPlaylist(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            videos: prev.videos.map(v => {
+              const vId = v.videoId || extractVideoId(v.thumbnail);
+              return vId === currentVidId ? { ...v, watched: true } : v;
+            })
+          };
+        });
+      }
       handleVideoSelect(playlist.videos[currentIndex + 1] as IVideoExtended);
     }
   };
@@ -143,8 +163,14 @@ export default function SinglePlaylistPage() {
           if (idsToFetch) {
             try {
               const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
-              setVideoStats(res.data.stats || {});
-            } catch (e) { }
+              if (res.status === 403) {
+                toast.error("YouTube API quota exceeded. Try again later.");
+              } else {
+                setVideoStats(res.data.stats || {});
+              }
+            } catch (e) {
+              console.error("Failed to fetch video stats:", e);
+            }
           }
         }
       }
@@ -170,7 +196,7 @@ export default function SinglePlaylistPage() {
 
     window.addEventListener("message", handleYouTubeMessage);
     return () => window.removeEventListener("message", handleYouTubeMessage);
-  }, [playlist, currentVideo]);
+  }, [playlist?._id, currentVideo?.videoId]);
 
   const handleRemoveVideo = async (videoIdToRemove: string) => {
     if (!playlist) return;

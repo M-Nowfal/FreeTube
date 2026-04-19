@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
         hostname: "yt3.ggpht.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "img.youtube.com",
+        pathname: "/**",
+      },
     ],
   },
   typescript: {
