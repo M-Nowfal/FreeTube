@@ -56,14 +56,15 @@ export default function SinglePlaylistPage() {
   };
 
   const handleVideoSelect = async (video: IVideoExtended) => {
-    setCurrentVideo(video);
-    setShowFullDesc(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
     const actualVideoId = video.videoId || extractVideoId(video.thumbnail);
     if (!actualVideoId || !playlist) return;
 
     const isWatched = playlist.videos.some(v => (v.videoId || extractVideoId(v.thumbnail)) === actualVideoId && v.watched);
+
+    const updatedVideo = { ...video, watched: true };
+    setCurrentVideo(updatedVideo);
+    setShowFullDesc(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     if (!isWatched) {
       // Update Zustand immediately
