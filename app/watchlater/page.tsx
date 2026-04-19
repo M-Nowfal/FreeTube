@@ -34,7 +34,7 @@ export default function WatchLaterPage() {
 
   const [playingVideo, setPlayingVideo] = useState<IWatchLaterVideo | null>(null);
   const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
-  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {

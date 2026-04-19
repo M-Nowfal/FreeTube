@@ -5,6 +5,7 @@ import { useUserStore } from "@/store/useUserStore";
 import { useChannelStore } from "@/store/useChannelStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
+import { useShortsStore } from "@/store/useShortsStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlaySquare, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2, Scissors, UserMinus } from "lucide-react";
@@ -85,7 +86,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [deleting, setDeleting] = useState(false);
 
   const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
-  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -146,6 +147,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       toast.success(`${shortsCount} shorts deleted`);
       invalidate(id);
       fetchChannel(id, user.username, titleParam);
+      useShortsStore.getState().invalidate();
+      if (user.username) {
+        useShortsStore.getState().fetchShorts(user.username, true);
+      }
       setShortsCount(0);
     } catch (error) {
       toast.error("Failed to delete shorts");
@@ -161,9 +166,9 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
     try {
       await axios.delete(`/api/shorts?username=${user.username}&channelTitle=${encodeURIComponent(channelInfo.title)}`);
       toast.success(`${videosCount} videos deleted`);
-      // Refresh data
       invalidate(id);
       fetchChannel(id, user.username, titleParam);
+      usePlaylistStore.getState().invalidate();
       setVideosCount(0);
     } catch (error) {
       toast.error("Failed to delete videos");
@@ -178,6 +183,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
     try {
       await axios.delete(`/api/shorts?username=${user.username}&shortId=${shortId}`);
       setVideos((prev) => prev.filter((v: any) => (v as any)._id !== shortId));
+      useShortsStore.getState().invalidate();
+      if (user.username) {
+        useShortsStore.getState().fetchShorts(user.username, true);
+      }
       toast.success("Short deleted");
       setShortsCount((prev) => prev - 1);
     } catch (error) {

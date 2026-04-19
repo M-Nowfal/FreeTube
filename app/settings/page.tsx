@@ -39,7 +39,7 @@ export default function SettingsPage() {
   const [deletingWatched, setDeletingWatched] = useState(false);
 
   const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
-  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   useEffect(() => {
     if (!authLoading && !isAuth) {

@@ -1,7 +1,7 @@
 import { toYouTubeEmbedUrl } from "@/utils/helper";
 import { create } from "zustand";
 
-export type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2 | 2.5 | 3;
+export type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
 
 interface VideoUrlState {
   videourl: string | null;

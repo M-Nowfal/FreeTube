@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { IPlaylist, IVideo } from "@/types/playlist";
 import { Loader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function SinglePlaylistPage() {
   const [showUnwatchedOnly, setShowUnwatchedOnly] = useState(false);
 
   const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
-  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -190,7 +190,10 @@ if (loadedPlaylist) {
               if (res.status === 200) {
                 setVideoStats(res.data.stats || {});
               }
-            } catch (e) {
+            } catch (e: unknown) {
+              if (e instanceof AxiosError && e.response?.status === 403) {
+                toast.error("YouTube API quota exceeded. Video stats may not be available.");
+              }
               console.error("Failed to fetch video stats:", e);
             }
           }
