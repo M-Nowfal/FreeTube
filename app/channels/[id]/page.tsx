@@ -77,7 +77,7 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
   const [unsubscribing, setUnsubscribing] = useState(false);
 
@@ -110,6 +110,14 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       setPlaylistUpdatedAt(cached.playlistUpdatedAt);
     }
   }, [cache[id]]);
+
+  useEffect(() => {
+    if (!videos || videos.length === 0) {
+      setTimeframe("1d");
+    } else {
+      setTimeframe("last");
+    }
+  }, [videos?.length]);
 
   useEffect(() => {
     if (iframeRef.current && activeVideo) {

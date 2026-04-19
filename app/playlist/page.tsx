@@ -38,7 +38,7 @@ export default function PlaylistPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
 
   const router = useRouter();
@@ -46,6 +46,7 @@ export default function PlaylistPage() {
   const playlists = cache?.playlists || [];
   const lastSynced = cache?.lastSynced || null;
   const customPlaylists = playlists.filter((p: any) => p.isCustom);
+  const hasVideos = playlists.some((p: any) => p.videos && p.videos.length > 0);
 
   useEffect(() => {
     initAuth();
@@ -56,6 +57,14 @@ export default function PlaylistPage() {
       fetchPlaylists(user.username);
     }
   }, [isAuth, authLoading, authInitialized, user?.username]);
+
+  useEffect(() => {
+    if (!hasVideos && playlists.length > 0) {
+      setTimeframe("1d");
+    } else if (hasVideos) {
+      setTimeframe("last");
+    }
+  }, [hasVideos, playlists.length]);
 
   const isLoading = loading;
 

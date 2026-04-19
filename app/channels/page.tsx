@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { Search, ExternalLink, UserPlus, UserMinus, RefreshCw, Scissors, Trash2 } from "lucide-react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import {
   Select,
   SelectContent,
@@ -18,10 +18,9 @@ import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
-import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { useChannelStore } from "@/store/useChannelStore";
+import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
-import { AxiosError } from "axios";
 import Link from "next/link";
 import { Alert } from "@/components/others/alert";
 
@@ -48,7 +47,7 @@ export default function SearchChannelsPage() {
   const [subscribingIds, setSubscribingIds] = useState<Set<string>>(new Set());
   const [unsubscribingIds, setUnsubscribingIds] = useState<Set<string>>(new Set());
 
-  const [timeframe, setTimeframe] = useState("1d");
+  const [timeframe, setTimeframe] = useState("last");
   const [syncing, setSyncing] = useState(false);
   const [deletingShorts, setDeletingShorts] = useState(false);
   const [deletingVideos, setDeletingVideos] = useState(false);
@@ -73,6 +72,21 @@ export default function SearchChannelsPage() {
       fetchSubscriptions(user.username);
     }
   }, [user]);
+
+  const { cache: playlistCache } = usePlaylistStore();
+
+  const hasVideos = useMemo(() => {
+    const playlists = playlistCache?.playlists || [];
+    return playlists.some((p: any) => p.videos && p.videos.length > 0);
+  }, [playlistCache]);
+
+  useEffect(() => {
+    if (!hasVideos && playlistCache?.playlists) {
+      setTimeframe("1d");
+    } else if (hasVideos) {
+      setTimeframe("last");
+    }
+  }, [hasVideos, playlistCache?.playlists?.length]);
 
   const handleSync = async () => {
     if (!user?.username) return toast.error("Please log in first");
