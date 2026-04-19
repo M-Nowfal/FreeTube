@@ -324,10 +324,10 @@ export default function ShortsPage() {
           <Button
             variant="outline"
             onClick={handleGoToPreviousPage}
-            className="fixed top-5 left-5 gap-2 rounded-full z-50 opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background"
-            size="icon"
+            className="fixed top-5 left-5 gap-2 rounded-full z-50 md:opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background"
+            size="icon-lg"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-10 w-10" strokeWidth={4} />
           </Button>
           <div className="not-sm:hidden fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
             <Button
