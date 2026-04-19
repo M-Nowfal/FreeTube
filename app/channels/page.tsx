@@ -150,9 +150,22 @@ export default function SearchChannelsPage() {
     });
   };
 
+  const filteredSubscriptions = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return subscribedChannels.filter(ch => 
+      ch.title.toLowerCase().includes(q)
+    );
+  }, [query, subscribedChannels]);
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
+
+    if (filteredSubscriptions.length > 0 && searchResults.length === 0) {
+      setHasSearched(true);
+      return;
+    }
 
     setSearchLoading(true);
     setHasSearched(true);
@@ -251,7 +264,49 @@ export default function SearchChannelsPage() {
         </form>
       </div>
 
-      {searchLoading ? (
+      {filteredSubscriptions.length > 0 && !searchResults.length && hasSearched ? (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold">Your Subscriptions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredSubscriptions.map((channel) => (
+              <Card
+                key={channel.channelId}
+                className="flex flex-col group overflow-hidden hover:shadow-md hover:border-primary/40 transition-all duration-300 bg-card/50 hover:bg-card"
+              >
+                <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-5">
+                  <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border shadow-sm bg-muted group-hover:scale-105 transition-transform duration-300 relative">
+                    <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
+                  </div>
+                  <div className="flex flex-col gap-1.5 overflow-hidden">
+                    <CardTitle className="text-base font-bold leading-tight line-clamp-1" title={channel.title}>
+                      {channel.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm line-clamp-2 leading-snug">
+                      {channel.description || "No description available."}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 flex flex-col justify-end p-5 pt-0 mt-2">
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <Button
+                      onClick={() => router.push(`/channels/${channel.channelId}?title=${encodeURIComponent(channel.title)}`)}
+                      className="w-full font-semibold shadow-sm transition-transform active:scale-[0.98]"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" /> View Channel
+                    </Button>
+                    <Button variant="outline" className="w-full transition-transform active:scale-[0.98]" asChild>
+                      <a href={`https://www.youtube.com/channel/${channel.channelId}`} target="_blank" rel="noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2 opacity-70" /> Visit Channel
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : searchLoading ? (
         <div className="flex justify-center py-20">
           <Loader size={50} />
         </div>
@@ -307,12 +362,6 @@ export default function SearchChannelsPage() {
           </div>
         </div>
       ) : null}
-
-      {hasSearched && !searchLoading && searchResults.length === 0 && (
-        <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-          No channels found for "{query}"
-        </div>
-      )}
 
       <div className="w-full h-px bg-border my-8"></div>
 
