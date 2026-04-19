@@ -14,6 +14,8 @@ import { useUserStore } from "@/store/useUserStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { sharePlaylist } from "@/lib/share-playlist";
 import { Switch } from "@/components/ui/switch";
+import { useVideoUrlStore, type PlaybackSpeed } from "@/store/useVideoUrlStore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface IVideoExtended extends IVideo {
   watched?: boolean;
@@ -42,6 +44,9 @@ export default function SinglePlaylistPage() {
   const [videoStats, setVideoStats] = useState<Record<string, IVideoStats>>({});
   const [showUnwatchedOnly, setShowUnwatchedOnly] = useState(false);
 
+  const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const extractVideoId = (thumbnailUrl: string) => {
@@ -63,7 +68,7 @@ export default function SinglePlaylistPage() {
     if (!isWatched) {
       // Update Zustand immediately
       markVideoAsWatched(playlist._id, actualVideoId);
-      
+
       // Update local state immediately
       setPlaylist(prev => {
         if (!prev) return prev;
@@ -198,6 +203,21 @@ export default function SinglePlaylistPage() {
     return () => window.removeEventListener("message", handleYouTubeMessage);
   }, [playlist?._id, currentVideo?.videoId]);
 
+  useEffect(() => {
+    if (iframeRef.current && currentVideo) {
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "setPlaybackRate",
+            args: [playbackSpeed],
+          }),
+          "*"
+        );
+      }, 500);
+    }
+  }, [playbackSpeed, currentVideo]);
+
   const handleRemoveVideo = async (videoIdToRemove: string) => {
     if (!playlist) return;
     try {
@@ -281,6 +301,16 @@ export default function SinglePlaylistPage() {
                       "*"
                     );
                   }, 500);
+                  setTimeout(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({
+                        event: "command",
+                        func: "setPlaybackRate",
+                        args: [playbackSpeed],
+                      }),
+                      "*"
+                    );
+                  }, 1000);
                 }}
               ></iframe>
             ) : (
@@ -355,6 +385,23 @@ export default function SinglePlaylistPage() {
                     checked={showUnwatchedOnly}
                     onCheckedChange={setShowUnwatchedOnly}
                   />
+                </div>
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <Select
+                    value={playbackSpeed.toString()}
+                    onValueChange={(value) => setPlaybackSpeed(parseFloat(value) as PlaybackSpeed)}
+                  >
+                    <SelectTrigger className="w-16 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {speedOptions.map((speed) => (
+                        <SelectItem key={speed} value={speed.toString()}>
+                          {speed}x
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button variant="outline" size="icon" title="Share entire playlist" className="shrink-0 ml-2" onClick={() => sharePlaylist(playlist.channelTitle, playlist._id)}>
                   <Share2 className="h-4 w-4" />

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, use, useMemo } from "react";
+import { useEffect, useState, use, useMemo, useRef } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useChannelStore } from "@/store/useChannelStore";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlaySquare, ExternalLink, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2, Scissors, UserMinus } from "lucide-react";
+import { PlaySquare, Filter, PlayCircle, ThumbsUp, Eye, MessageSquare, ChevronDown, ChevronUp, RefreshCw, X, Trash2, Scissors, UserMinus } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IVideo } from "@/types/playlist";
@@ -16,6 +16,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { Alert } from "@/components/others/alert";
+import { useVideoUrlStore, type PlaybackSpeed } from "@/store/useVideoUrlStore";
 
 interface IChannelInfo {
   channelId: string;
@@ -83,6 +84,10 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
   const [videosCount, setVideosCount] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
+  const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   useEffect(() => {
     if (user?.username && id) {
       const cached = getChannelData(id);
@@ -104,6 +109,21 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
       setPlaylistUpdatedAt(cached.playlistUpdatedAt);
     }
   }, [cache[id]]);
+
+  useEffect(() => {
+    if (iframeRef.current && activeVideo) {
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "setPlaybackRate",
+            args: [playbackSpeed],
+          }),
+          "*"
+        );
+      }, 500);
+    }
+  }, [playbackSpeed, activeVideo]);
 
   // Calculate shorts vs long videos count
   useEffect(() => {
@@ -380,15 +400,51 @@ export default function ChannelProfilePage({ params }: { params: Promise<{ id: s
                 >
                   <X className="h-5 w-5" />
                 </button>
+                <div className="absolute top-2 left-2 z-10">
+                  <Select
+                    value={playbackSpeed.toString()}
+                    onValueChange={(value) => setPlaybackSpeed(parseFloat(value) as PlaybackSpeed)}
+                  >
+                    <SelectTrigger className="w-20 h-9 bg-black/50 text-white border-white/20 hover:bg-black/70">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {speedOptions.map((speed) => (
+                        <SelectItem key={speed} value={speed.toString()}>
+                          {speed}x
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <iframe
+                  ref={iframeRef}
                   width="100%"
                   height="100%"
-                  src={`https://www.youtube.com/embed/${activeVideo.videoId}?autoplay=1`}
+                  src={`https://www.youtube.com/embed/${activeVideo.videoId}?autoplay=1&enablejsapi=1`}
                   title="YouTube video player"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   className="border-0"
+                  onLoad={() => {
+                    setTimeout(() => {
+                      iframeRef.current?.contentWindow?.postMessage(
+                        JSON.stringify({ event: "listening" }),
+                        "*"
+                      );
+                    }, 500);
+                    setTimeout(() => {
+                      iframeRef.current?.contentWindow?.postMessage(
+                        JSON.stringify({
+                          event: "command",
+                          func: "setPlaybackRate",
+                          args: [playbackSpeed],
+                        }),
+                        "*"
+                      );
+                    }, 1000);
+                  }}
                 ></iframe>
               </div>
             </div>

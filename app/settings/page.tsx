@@ -16,6 +16,8 @@ import { useUserStore } from "@/store/useUserStore";
 import { useShortsStore } from "@/store/useShortsStore";
 import { usePlaylistStore } from "@/store/usePlaylistStore";
 import { useChannelStore } from "@/store/useChannelStore";
+import { useVideoUrlStore, type PlaybackSpeed } from "@/store/useVideoUrlStore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SettingsPage() {
   const { isAuth, loading: authLoading } = useAuth();
@@ -35,6 +37,9 @@ export default function SettingsPage() {
   const [deletingAllVideos, setDeletingAllVideos] = useState(false);
   const [deletingAllShorts, setDeletingAllShorts] = useState(false);
   const [deletingWatched, setDeletingWatched] = useState(false);
+
+  const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
   useEffect(() => {
     if (!authLoading && !isAuth) {
@@ -313,6 +318,37 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Playback Speed</CardTitle>
+          <CardDescription>
+            Set the default playback speed for all videos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Select
+              value={playbackSpeed.toString()}
+              onValueChange={(value) => setPlaybackSpeed(parseFloat(value) as PlaybackSpeed)}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {speedOptions.map((speed) => (
+                  <SelectItem key={speed} value={speed.toString()}>
+                    {speed}x
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">
+              Current: {playbackSpeed}x
+            </span>
+          </div>
         </CardContent>
       </Card>
 

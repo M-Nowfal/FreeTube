@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
@@ -13,6 +13,8 @@ import { PlaySquare, Plus, Trash2, CheckCircle, X, Play } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { Alert } from "@/components/others/alert";
 import { useRouter } from "next/navigation";
+import { useVideoUrlStore, type PlaybackSpeed } from "@/store/useVideoUrlStore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface IWatchLaterVideo {
   _id: string;
@@ -31,6 +33,9 @@ export default function WatchLaterPage() {
   const router = useRouter();
 
   const [playingVideo, setPlayingVideo] = useState<IWatchLaterVideo | null>(null);
+  const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     initAuth();
@@ -108,6 +113,21 @@ export default function WatchLaterPage() {
     }
   };
 
+  useEffect(() => {
+    if (iframeRef.current && playingVideo) {
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "setPlaybackRate",
+            args: [playbackSpeed],
+          }),
+          "*"
+        );
+      }, 500);
+    }
+  }, [playbackSpeed, playingVideo]);
+
   return (
     <div className="container mx-auto sm:p-6 max-w-7xl space-y-8">
       <div className="space-y-4 py-4">
@@ -139,13 +159,49 @@ export default function WatchLaterPage() {
               <X className="h-4 w-4" strokeWidth={3} />
             </button>
           </div>
+          <div className="absolute top-1 left-1 z-10">
+            <Select
+              value={playbackSpeed.toString()}
+              onValueChange={(value) => setPlaybackSpeed(parseFloat(value) as PlaybackSpeed)}
+            >
+              <SelectTrigger className="w-20 h-9 bg-black/50 text-white border-white/20 hover:bg-black/70">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {speedOptions.map((speed) => (
+                  <SelectItem key={speed} value={speed.toString()}>
+                    {speed}x
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="aspect-video w-full">
             <iframe
+              ref={iframeRef}
               className="w-full h-full sm:rounded-t-lg"
-              src={`https://www.youtube.com/embed/${playingVideo.videoId}?autoplay=1`}
+              src={`https://www.youtube.com/embed/${playingVideo.videoId}?autoplay=1&enablejsapi=1`}
               title="YouTube video player"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
+              onLoad={() => {
+                setTimeout(() => {
+                  iframeRef.current?.contentWindow?.postMessage(
+                    JSON.stringify({ event: "listening" }),
+                    "*"
+                  );
+                }, 500);
+                setTimeout(() => {
+                  iframeRef.current?.contentWindow?.postMessage(
+                    JSON.stringify({
+                      event: "command",
+                      func: "setPlaybackRate",
+                      args: [playbackSpeed],
+                    }),
+                    "*"
+                  );
+                }, 1000);
+              }}
             ></iframe>
           </div>
           <div className="p-4 bg-card text-card-foreground rounded-b-lg">
