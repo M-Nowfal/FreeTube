@@ -150,15 +150,33 @@ export default function SinglePlaylistPage() {
         }
       }
 
-      if (loadedPlaylist) {
+if (loadedPlaylist) {
         setPlaylist(loadedPlaylist);
         const targetVideo = videoId
           ? loadedPlaylist.videos.find((v: IVideoExtended) =>
-            v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
-          )
+              v.videoId === videoId || extractVideoId(v.thumbnail) === videoId
+            )
           : null;
         const firstUnwatched = loadedPlaylist.videos.find((v: IVideoExtended) => !v.watched);
-        handleVideoSelect(targetVideo || firstUnwatched || loadedPlaylist.videos[0]);
+        const videoToPlay = targetVideo || firstUnwatched || loadedPlaylist.videos[0];
+
+        if (videoToPlay) {
+          const actualVideoId = videoToPlay.videoId || extractVideoId(videoToPlay.thumbnail);
+          if (actualVideoId) {
+            markVideoAsWatched(loadedPlaylist._id, actualVideoId);
+            setPlaylist(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                videos: prev.videos.map(v => {
+                  const vId = v.videoId || extractVideoId(v.thumbnail);
+                  return vId === actualVideoId ? { ...v, watched: true } : v;
+                })
+              };
+            });
+            setCurrentVideo({ ...videoToPlay, watched: true });
+          }
+        }
 
         if (loadedPlaylist.videos.length > 0) {
           const idsToFetch = loadedPlaylist.videos
@@ -169,9 +187,7 @@ export default function SinglePlaylistPage() {
           if (idsToFetch) {
             try {
               const res = await axios.get(`/api/youtube/bulk?ids=${idsToFetch}`);
-              if (res.status === 403) {
-                toast.error("YouTube API quota exceeded. Try again later.");
-              } else {
+              if (res.status === 200) {
                 setVideoStats(res.data.stats || {});
               }
             } catch (e) {
@@ -315,7 +331,9 @@ export default function SinglePlaylistPage() {
                 }}
               ></iframe>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">Video unavailable</div>
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                {playlist?.videos.every(v => v.watched) ? "All videos watched" : "Video unavailable"}
+              </div>
             )}
           </div>
 
