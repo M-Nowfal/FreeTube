@@ -250,6 +250,15 @@ export default function ShortsPage() {
           <ShortsIcon size={64} className="mb-4 opacity-50" />
           <p className="text-lg">No Shorts yet</p>
           <p className="text-sm mt-2">Sync your subscriptions to see Shorts here</p>
+          <Button
+            variant="outline"
+            onClick={handleGoToPreviousPage}
+            className="gap-2 mt-4 md:opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background"
+            size="lg"
+          >
+            <ArrowLeft className="h-10 w-10" />
+            Back
+          </Button>
         </div>
       ) : showDeleteOverlay && shorts.length > 0 ? (
         <div className="h-full w-full flex flex-col items-center justify-center bg-background">

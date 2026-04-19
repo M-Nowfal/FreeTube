@@ -13,6 +13,9 @@ import axios from "axios";
 import { PasswordConfirmDialog } from "@/components/others/password-confirm-dialog";
 import { Alert } from "@/components/others/alert";
 import { useUserStore } from "@/store/useUserStore";
+import { useShortsStore } from "@/store/useShortsStore";
+import { usePlaylistStore } from "@/store/usePlaylistStore";
+import { useChannelStore } from "@/store/useChannelStore";
 
 export default function SettingsPage() {
   const { isAuth, loading: authLoading } = useAuth();
@@ -143,6 +146,9 @@ export default function SettingsPage() {
         withCredentials: true,
       });
       toast.success(data.message);
+      useShortsStore.getState().invalidate();
+      usePlaylistStore.getState().invalidate();
+      useChannelStore.getState().invalidateAll();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Failed to delete watched videos");
     } finally {
@@ -157,6 +163,8 @@ export default function SettingsPage() {
         withCredentials: true,
       });
       toast.success(data.message);
+      usePlaylistStore.getState().invalidate();
+      useChannelStore.getState().invalidateAll();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Failed to delete all videos");
     } finally {
@@ -171,6 +179,8 @@ export default function SettingsPage() {
         withCredentials: true,
       });
       toast.success(data.message);
+      useShortsStore.getState().invalidate();
+      useChannelStore.getState().removeShortsFromAllChannels();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Failed to delete all shorts");
     } finally {
