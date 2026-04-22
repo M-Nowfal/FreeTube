@@ -166,7 +166,15 @@ export default function ShortsPage() {
     if (unwatchedIndex !== -1 && unwatchedIndex !== currentIndex) {
       setTimeout(() => scrollToIndex(unwatchedIndex), 100);
     } else if (unwatchedIndex === -1 && shorts.length > 0) {
-      toast.info("All shorts are watched");
+      toast.info("All shorts are watched", {
+        action: {
+          label: "Go to Last",
+          onClick: () => {
+            setShowDeleteOverlay(true);
+          }
+        },
+        duration: 10000,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shorts.length]);
@@ -333,7 +341,7 @@ export default function ShortsPage() {
           <Button
             variant="outline"
             onClick={handleGoToPreviousPage}
-            className="fixed top-5 left-5 gap-2 rounded-full z-50 md:opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background"
+            className="fixed top-5 left-5 gap-2 rounded-full z-50 md:opacity-60 hover:opacity-100 shadow-2xl md:bg-foreground md:text-background md:dark:bg-background md:dark:text-foreground"
             size="icon-lg"
           >
             <ArrowLeft className="h-10 w-10" strokeWidth={4} />
