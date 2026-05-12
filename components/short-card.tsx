@@ -1,26 +1,45 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Heart, Share2, Bookmark, Play } from "lucide-react";
 import { IShort } from "@/types/short";
 import { useSubscriptionsStore } from "@/store/useSubscriptionsStore";
+import { type PlaybackSpeed } from "@/store/useVideoUrlStore";
 import { toast } from "sonner";
 
 interface ShortCardProps {
   short: IShort;
   isActive: boolean;
+  playbackSpeed: PlaybackSpeed;
   onLike: (shortId: string) => void;
   onWatchLater: (short: IShort) => void;
 }
 
-export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardProps) {
+export function ShortCard({ short, isActive, playbackSpeed, onLike, onWatchLater }: ShortCardProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const subscriptions = useSubscriptionsStore((state) => state.channels);
   const subscription = subscriptions.find((sub) => sub.channelId === short.channelId);
   const channelLogo = subscription?.thumbnail || short.channelThumbnail;
 
-  const preloadSrc = `https://www.youtube.com/embed/${short.videoId}?autoplay=1&loop=1&playlist=${short.videoId}&playsinline=1&controls=1`;
+  const preloadSrc = `https://www.youtube.com/embed/${short.videoId}?autoplay=1&loop=1&playlist=${short.videoId}&playsinline=1&controls=1&enablejsapi=1`;
+
+  useEffect(() => {
+    if (!isActive || !iframeRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({
+          event: "command",
+          func: "setPlaybackRate",
+          args: [playbackSpeed],
+        }),
+        "*"
+      );
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [isActive, playbackSpeed, short.videoId]);
 
   const handleShare = async () => {
     const shareUrl = `https://youtube.com/shorts/${short.videoId}`;
@@ -84,6 +103,25 @@ export function ShortCard({ short, isActive, onLike, onWatchLater }: ShortCardPr
           className="w-full h-full"
           allow="autoplay; encrypted-media"
           allowFullScreen
+          onLoad={() => {
+            window.setTimeout(() => {
+              iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({ event: "listening" }),
+                "*"
+              );
+            }, 500);
+
+            window.setTimeout(() => {
+              iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({
+                  event: "command",
+                  func: "setPlaybackRate",
+                  args: [playbackSpeed],
+                }),
+                "*"
+              );
+            }, 1000);
+          }}
         />
       ) : (
         <div className="w-full h-full cursor-pointer relative">

@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/others/alert";
 import { useShortsStore } from "@/store/useShortsStore";
 import { useUserStore } from "@/store/useUserStore";
+import { useVideoUrlStore, type PlaybackSpeed } from "@/store/useVideoUrlStore";
 import { ShortsIcon } from "@/components/icons/shorts-icon";
 import { IShort } from "@/types/short";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, ArrowLeft, ChevronUp, ChevronDown, RotateCcw } from "lucide-react";
 import axios from "axios";
 
@@ -29,7 +31,10 @@ export default function ShortsPage() {
   } = useShortsStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasAutoScrolledRef = useRef(false);
   const { isAuth, authLoading, authInitialized, user, initAuth } = useUserStore();
+  const { playbackSpeed, setPlaybackSpeed } = useVideoUrlStore();
+  const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
@@ -106,6 +111,7 @@ export default function ShortsPage() {
 
   useEffect(() => {
     if (shorts.length === 0) {
+      hasAutoScrolledRef.current = false;
       setShowDeleteOverlay(false);
       setAllWatched(false);
     }
@@ -160,7 +166,9 @@ export default function ShortsPage() {
   }, [authInitialized, isAuth, authLoading, user?.username]);
 
   useEffect(() => {
-    if (shorts.length === 0) return;
+    if (shorts.length === 0 || hasAutoScrolledRef.current) return;
+
+    hasAutoScrolledRef.current = true;
     const unwatchedIndex = shorts.findIndex((s: IShort) => !s.watched);
 
     if (unwatchedIndex !== -1 && unwatchedIndex !== currentIndex) {
@@ -171,12 +179,11 @@ export default function ShortsPage() {
           label: "Go to Last",
           onClick: () => {
             setShowDeleteOverlay(true);
-          }
+          },
         },
         duration: 10000,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shorts.length]);
 
   const handleLike = useCallback(async (shortId: string) => {
@@ -318,7 +325,7 @@ export default function ShortsPage() {
           <div
             ref={containerRef}
             className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hidden"
-            style={{ scrollBehavior: 'smooth' }}
+            style={{ scrollBehavior: "smooth" }}
           >
             <div className="w-full max-w-xl m-auto flex flex-col h-full">
               {shorts.map((short, index) => (
@@ -330,6 +337,7 @@ export default function ShortsPage() {
                   <ShortCard
                     short={short}
                     isActive={index === currentIndex}
+                    playbackSpeed={playbackSpeed}
                     onLike={handleLike}
                     onWatchLater={handleWatchLater}
                   />
@@ -346,6 +354,23 @@ export default function ShortsPage() {
           >
             <ArrowLeft className="h-10 w-10" strokeWidth={4} />
           </Button>
+          <div className="fixed top-5 right-5 z-50">
+            <Select
+              value={playbackSpeed.toString()}
+              onValueChange={(value) => setPlaybackSpeed(parseFloat(value) as PlaybackSpeed)}
+            >
+              <SelectTrigger className="w-24 bg-black/60 text-white border-white/20 hover:bg-black/70 backdrop-blur-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {speedOptions.map((speed) => (
+                  <SelectItem key={speed} value={speed.toString()}>
+                    {speed}x
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="not-sm:hidden fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
             <Button
               variant="secondary"
