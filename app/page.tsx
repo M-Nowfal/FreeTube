@@ -275,7 +275,7 @@ export default function Page() {
   }
 
   return (
-    <div className={`mx-auto ${!hasFeedContent ? "mt-40" : ""} space-y-4 pb-10`}>
+    <div className={`mx-auto ${!hasFeedContent ? "mt-40 md:mt-5" : ""} space-y-4 pb-10`}>
       {showUrlInput ? (
         <div className="w-[98%] mt-6 max-w-6xl mx-auto border border-input rounded-lg flex items-center transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
           <div className="flex-1 relative">
