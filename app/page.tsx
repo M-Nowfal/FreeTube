@@ -79,10 +79,10 @@ export default function Page() {
                 username: user.username,
                 videoId: playingVideo.videoId,
               }),
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
-      } catch {}
+      } catch { }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -121,7 +121,7 @@ export default function Page() {
           username: user.username,
           videoId: video.videoId,
         }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -195,10 +195,17 @@ export default function Page() {
   }
 
   return (
-    <div className="mx-auto mt-4 space-y-4 pb-10">
+    <div className="mx-auto space-y-4 pb-10">
       {showUrlInput ? (
-        <div className="max-w-6xl mx-auto border border-input rounded-lg flex items-center transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
+        <div className="w-[98%] mt-6 max-w-6xl mx-auto border border-input rounded-lg flex items-center transition focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
           <div className="flex-1 relative">
+            {unwatchedVideos.length !== 0 && <Button 
+              size="icon-sm" 
+              className="z-10 rounded-full size-5 absolute -top-3"
+              onClick={() => setShowUrlInput(false)}
+            >
+              <X strokeWidth={3} className="size-3" />
+            </Button>}
             <Input
               placeholder="Place the URL here"
               type="text"
@@ -223,11 +230,10 @@ export default function Page() {
           </Tooltip>
         </div>
       ) : (
-        <div className="max-w-6xl mx-auto px-2 flex items-center gap-2">
+        <div className="fixed z-50 bottom-12 max-w-6xl mx-auto px-2 flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowUrlInput(true)} className="text-xs">
             + URL
           </Button>
-          <span className="text-xs text-muted-foreground">Paste a YouTube URL</span>
         </div>
       )}
 
@@ -302,7 +308,7 @@ export default function Page() {
           <Loader size={40} />
         </div>
       ) : unwatchedVideos.length === 0 && !playingVideo ? (
-        <div className="max-w-6xl mx-auto text-center p-10 md:p-20 text-muted-foreground border border-dashed rounded-xl">
+        <div className="max-w-6xl mt-6 mx-auto text-center p-15 md:p-25 text-muted-foreground border border-dashed rounded-xl">
           <PlaySquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p className="text-lg font-medium">All caught up!</p>
           <p className="text-sm mt-1">No unwatched videos from your subscriptions.</p>
