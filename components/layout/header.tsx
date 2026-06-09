@@ -62,7 +62,7 @@ export function Header(): JSX.Element {
   ];
 
   return (
-    <header className={`p-2 w-full flex items-center justify-between ${pathname.startsWith("/playlist") || pathname.startsWith("/watchlater") ? "sm:sticky" : "sticky"} top-0 z-100 bg-background border-b dark:border-neutral-700`}>
+    <header className={`p-2 w-full flex items-center justify-between ${pathname.startsWith("/playlist") || pathname.startsWith("/watchlater") ? "sm:sticky" : "sticky"} top-0 z-50 md:z-100 bg-background border-b dark:border-neutral-700`}>
       <div className="flex items-center gap-3">
         {isAuth && <SidebarTrigger className="mt-1 sm:hidden" />}
 
